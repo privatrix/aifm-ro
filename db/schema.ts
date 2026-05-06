@@ -1,18 +1,21 @@
 import {
-  pgTable,
+  pgSchema,
   serial,
   text,
   integer,
   boolean,
   timestamp,
-  pgEnum,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-export const songStatus = pgEnum("song_status", ["active", "archived", "draft"]);
-export const noteStatus = pgEnum("note_status", ["pending", "read", "archived"]);
+// All AI FM tables live in the `aifm` schema so we don't collide with other
+// projects sharing this Neon database (e.g. the existing `ieftin` schema).
+export const aifm = pgSchema("aifm");
 
-export const songs = pgTable("songs", {
+export const songStatus = aifm.enum("song_status", ["active", "archived", "draft"]);
+export const noteStatus = aifm.enum("note_status", ["pending", "read", "archived"]);
+
+export const songs = aifm.table("songs", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   genre: text("genre").notNull(),
@@ -31,7 +34,7 @@ export const songs = pgTable("songs", {
   pinned: boolean("pinned").notNull().default(false),
 });
 
-export const notes = pgTable("notes", {
+export const notes = aifm.table("notes", {
   id: serial("id").primaryKey(),
   fromName: text("from_name").notNull(),
   text: text("text").notNull(),
@@ -44,21 +47,21 @@ export const notes = pgTable("notes", {
 });
 
 // Single-row table (id always = 1)
-export const playbackState = pgTable("playback_state", {
+export const playbackState = aifm.table("playback_state", {
   id: integer("id").primaryKey(),
   currentSongId: integer("current_song_id"),
   startedAt: timestamp("started_at", { withTimezone: true }),
   nextSongId: integer("next_song_id"),
 });
 
-export const playHistory = pgTable("play_history", {
+export const playHistory = aifm.table("play_history", {
   id: serial("id").primaryKey(),
   songId: integer("song_id").notNull(),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
 });
 
-export const voteLog = pgTable(
+export const voteLog = aifm.table(
   "vote_log",
   {
     id: serial("id").primaryKey(),
