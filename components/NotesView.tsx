@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { VIO_NOTES, VioNote } from "@/lib/data";
+import { VIO_NOTES as MOCK_NOTES, VioNote } from "@/lib/data";
 
 interface Props {
   onNote: () => void;
@@ -37,6 +37,26 @@ export default function NotesView({ onNote }: Props) {
   const [filter, setFilter] = useState<"toate" | "raspuns" | "fararaspuns">("toate");
   const [typingIdx, setTypingIdx] = useState(0);
   const [myNotes, setMyNotes] = useState<MyNote[]>([]);
+  const [serverNotes, setServerNotes] = useState<VioNote[] | null>(null);
+
+  // Fetch real published notes; fall back to mock if API empty/fails.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/notes", { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (cancelled || !j?.ok) return;
+        if (Array.isArray(j.notes) && j.notes.length > 0) {
+          setServerNotes(j.notes as VioNote[]);
+        } else {
+          setServerNotes([]);
+        }
+      })
+      .catch(() => setServerNotes([]));
+    return () => { cancelled = true; };
+  }, []);
+
+  const sourceNotes: VioNote[] = serverNotes && serverNotes.length > 0 ? serverNotes : MOCK_NOTES;
 
   useEffect(() => {
     setMyNotes(loadMyNotes());
@@ -56,12 +76,19 @@ export default function NotesView({ onNote }: Props) {
   }, []);
 
   const filteredNotes = useMemo<VioNote[]>(() => {
-    if (filter === "toate") return VIO_NOTES;
-    if (filter === "raspuns") return VIO_NOTES.filter(n => !!n.reply);
-    return VIO_NOTES.filter(n => !n.reply);
-  }, [filter]);
+    if (filter === "toate") return sourceNotes;
+    if (filter === "raspuns") return sourceNotes.filter(n => !!n.reply);
+    return sourceNotes.filter(n => !n.reply);
+  }, [filter, sourceNotes]);
 
-  const typing = TYPING_POOL[typingIdx];
+  // Prefer a real note name if we have any, else random fictional pool.
+  const typingPool = sourceNotes.length > 0
+    ? sourceNotes.map(n => {
+        const parts = (n.from || "").split(",").map(s => s.trim()).filter(Boolean);
+        return { name: parts[0] || n.from || "un ascultător", city: parts[1] || "" };
+      })
+    : TYPING_POOL;
+  const typing = typingPool[typingIdx % Math.max(1, typingPool.length)];
 
   return (
     <div className="absolute inset-0 flex flex-col pt-3">
@@ -76,7 +103,7 @@ export default function NotesView({ onNote }: Props) {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full animate-breathe" style={{ background: "#E91E8C" }} />
-              <span className="font-mono text-[11px]" style={{ color: "#9b8f7d" }}>{VIO_NOTES.length}</span>
+              <span className="font-mono text-[11px]" style={{ color: "#9b8f7d" }}>{sourceNotes.length}</span>
             </div>
           </div>
           {/* Primary tabs */}
