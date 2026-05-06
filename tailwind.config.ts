@@ -1,43 +1,45 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        ink: "#0a0a0f",
-        ember: "#ff6b35",
-        glow: "#ffb347",
-        bone: "#f5f1e8",
-        dusk: "#1a1625",
+        ink: "#070708",
+        booth: "#0e0d10",
+        tungsten: "#f5b562",
+        amber: "#c47626",
+        cyan: "#5fd4e6",
+        bone: "#ece7d8",
+        ash: "#7a7679",
       },
       fontFamily: {
-        display: ["var(--font-display)", "ui-serif", "Georgia"],
+        serif: ["var(--font-serif)", "ui-serif", "Georgia"],
+        mono: ["var(--font-mono)", "ui-monospace", "Menlo"],
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui"],
-        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       animation: {
-        "vu-pulse": "vu 1.2s ease-in-out infinite",
-        "vu-pulse-slow": "vu 1.8s ease-in-out infinite",
-        "vu-pulse-fast": "vu 0.8s ease-in-out infinite",
-        breathe: "breathe 4s ease-in-out infinite",
-        ticker: "ticker 40s linear infinite",
+        flicker: "flicker 6s infinite",
+        breathe: "breathe 5s ease-in-out infinite",
+        marquee: "marquee 28s linear infinite",
+        blink: "blink 1.4s steps(1) infinite",
       },
       keyframes: {
-        vu: {
-          "0%,100%": { transform: "scaleY(0.3)" },
-          "50%": { transform: "scaleY(1)" },
+        flicker: {
+          "0%,19%,21%,23%,25%,54%,56%,100%": { opacity: "1" },
+          "20%,24%,55%": { opacity: "0.78" },
         },
         breathe: {
-          "0%,100%": { opacity: "0.85", transform: "scale(1)" },
-          "50%": { opacity: "1", transform: "scale(1.02)" },
+          "0%,100%": { opacity: "0.85" },
+          "50%": { opacity: "1" },
         },
-        ticker: {
-          "0%": { transform: "translateX(0%)" },
+        marquee: {
+          "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(-50%)" },
+        },
+        blink: {
+          "0%,50%": { opacity: "1" },
+          "51%,100%": { opacity: "0" },
         },
       },
     },
