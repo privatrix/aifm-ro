@@ -48,3 +48,12 @@ export async function deleteObject(key: string): Promise<void> {
 export async function putObject(key: string, body: Uint8Array | Buffer, contentType: string): Promise<void> {
   await client().send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: body, ContentType: contentType }));
 }
+
+export async function getObjectBytes(key: string): Promise<Uint8Array> {
+  const out = await client().send(new GetObjectCommand({ Bucket: bucket(), Key: key }));
+  const body = out.Body as { transformToByteArray?: () => Promise<Uint8Array> } | undefined;
+  if (!body || typeof body.transformToByteArray !== "function") {
+    throw new Error("R2 GetObject returned no body");
+  }
+  return body.transformToByteArray();
+}

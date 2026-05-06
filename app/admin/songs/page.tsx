@@ -13,14 +13,22 @@ export default async function SongsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl text-zinc-100">Songs</h1>
-          <p className="text-xs text-zinc-500 mt-0.5">{rows.length} total · metadata only (audio uploads in stage 3)</p>
+          <p className="text-xs text-zinc-500 mt-0.5">{rows.length} total</p>
         </div>
-        <Link
-          href="/admin/songs/new"
-          className="text-sm bg-zinc-100 text-zinc-900 px-3 py-1.5 rounded hover:bg-white"
-        >
-          + New song
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/songs/upload"
+            className="text-sm border border-zinc-700 text-zinc-200 px-3 py-1.5 rounded hover:bg-zinc-900"
+          >
+            Bulk upload
+          </Link>
+          <Link
+            href="/admin/songs/new"
+            className="text-sm bg-zinc-100 text-zinc-900 px-3 py-1.5 rounded hover:bg-white"
+          >
+            + New song
+          </Link>
+        </div>
       </div>
       <SongsTable initialSongs={rows} />
     </div>

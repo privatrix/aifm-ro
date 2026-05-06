@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Song } from "@/db/schema";
@@ -16,6 +16,23 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
   const [genreFilter, setGenreFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [busy, setBusy] = useState<number | null>(null);
+  const [playingId, setPlayingId] = useState<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  function togglePlay(s: Song) {
+    if (!s.fileUrl) return;
+    const a = audioRef.current;
+    if (!a) return;
+    if (playingId === s.id) {
+      a.pause();
+      setPlayingId(null);
+      return;
+    }
+    a.src = s.fileUrl;
+    a.play()
+      .then(() => setPlayingId(s.id))
+      .catch(() => setPlayingId(null));
+  }
 
   const filtered = useMemo(() => {
     let out = [...songs];
@@ -65,6 +82,19 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
       const r = await fetch(`/api/admin/songs/${id}`, { method: "DELETE" });
       const j = await r.json();
       if (j.ok) setSongs((prev) => prev.map((s) => (s.id === id ? j.song : s)));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function hardDelete(id: number) {
+    if (!confirm("Permanently delete this song AND its audio file from R2? This cannot be undone.")) return;
+    setBusy(id);
+    try {
+      const r = await fetch(`/api/admin/songs/${id}?hard=true`, { method: "DELETE" });
+      const j = await r.json();
+      if (j.ok) setSongs((prev) => prev.filter((s) => s.id !== id));
+      else alert("Error: " + (j.error || "unknown"));
     } finally {
       setBusy(null);
     }
@@ -147,6 +177,17 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
                     className="inline-block w-2 h-2 rounded-full mr-2 align-middle"
                     style={{ background: `linear-gradient(135deg, ${s.gradientFrom}, ${s.gradientTo})` }}
                   />
+                  {s.fileUrl ? (
+                    <button
+                      onClick={() => togglePlay(s)}
+                      title={playingId === s.id ? "Pause" : "Play"}
+                      className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-zinc-700 text-[10px] mr-2 align-middle hover:border-zinc-400 hover:text-white"
+                    >
+                      {playingId === s.id ? "■" : "▶"}
+                    </button>
+                  ) : (
+                    <span className="inline-block w-5 h-5 mr-2 align-middle text-[10px] text-zinc-700 text-center">—</span>
+                  )}
                   {s.title}
                 </td>
                 <td className="px-3 py-2">{s.genre}</td>
@@ -195,12 +236,32 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
                       Archive
                     </button>
                   )}
+                  {s.status === "archived" && (
+                    <button
+                      disabled={busy === s.id}
+                      onClick={() => hardDelete(s.id)}
+                      className="text-red-500 hover:text-red-400"
+                      title="Permanently delete (incl. R2 file)"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <audio
+        ref={audioRef}
+        onEnded={() => setPlayingId(null)}
+        onPause={() => {
+          // Only clear if pause wasn't triggered by setting a new src.
+          if (audioRef.current && audioRef.current.paused && audioRef.current.ended) setPlayingId(null);
+        }}
+        className="hidden"
+      />
     </div>
   );
 }

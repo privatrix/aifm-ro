@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { songs } from "@/db/schema";
 import SongForm from "../../_components/SongForm";
+import SongFileUploader from "../../_components/SongFileUploader";
 import type { Genre } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,14 @@ export default async function EditSongPage({ params }: { params: { id: string } 
       <div className="flex items-baseline justify-between mb-6">
         <h1 className="text-xl text-zinc-100">Edit: {row.title}</h1>
         <span className="text-xs text-zinc-500">id #{row.id}</span>
+      </div>
+      <div className="mb-6">
+        <SongFileUploader
+          songId={row.id}
+          initialFileUrl={row.fileUrl}
+          initialFileKey={row.fileKey}
+          initialDuration={row.durationSeconds}
+        />
       </div>
       <SongForm
         mode="edit"

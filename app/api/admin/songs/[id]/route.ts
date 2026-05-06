@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { songs } from "@/db/schema";
 import { SongUpdateSchema } from "@/lib/songs";
+import { deleteObject } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,9 +43,27 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   return NextResponse.json({ ok: true, song: row });
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const id = parseId(params.id);
   if (!id) return NextResponse.json({ ok: false, error: "bad id" }, { status: 400 });
+  const hard = req.nextUrl.searchParams.get("hard") === "true";
+
+  const [existing] = await db.select().from(songs).where(eq(songs.id, id));
+  if (!existing) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
+
+  if (hard) {
+    if (existing.fileKey) {
+      try {
+        await deleteObject(existing.fileKey);
+      } catch (e) {
+        // Log but proceed — orphan blob is recoverable, broken link in UI is worse.
+        console.warn("R2 delete failed for", existing.fileKey, (e as Error).message);
+      }
+    }
+    await db.delete(songs).where(eq(songs.id, id));
+    return NextResponse.json({ ok: true, deleted: true, id });
+  }
+
   const [row] = await db.update(songs).set({ status: "archived" }).where(eq(songs.id, id)).returning();
   if (!row) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
   return NextResponse.json({ ok: true, song: row });
