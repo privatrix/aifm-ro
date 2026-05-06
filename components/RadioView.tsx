@@ -15,6 +15,10 @@ interface Props {
   onNext: () => void;
   onNote: () => void;
   onOpenLibrary: () => void;
+  liveMode: boolean;
+  onReturnToLive: () => void;
+  upNext: Song | null;
+  listenerCount: number | null;
 }
 
 const TICK_HEIGHTS = [6,10,7,14,9,18,8,22,12,16,8,20,25,18,12,7,22,16,10,8,20,14,9,18,12,7,16,11,19,8,14,22,10,16];
@@ -42,7 +46,7 @@ function moodEmoji(): string {
 
 function timeOfDayLabel(): string {
   const h = new Date().getHours();
-  if (h >= 6 && h < 10) return "Programul de dimineață";
+  if (h >= 6 && h < 10) return "Dimineață";
   if (h >= 10 && h < 18) return "Programul de zi";
   if (h >= 18 && h < 22) return "Programul de seară";
   return "Programul de noapte";
@@ -50,9 +54,9 @@ function timeOfDayLabel(): string {
 
 export default function RadioView({
   song, songs, playing, setPlaying, voted, votes, onVote, onPrev, onNext, onNote, onOpenLibrary,
+  liveMode, onReturnToLive, upNext, listenerCount,
 }: Props) {
   const [lineIdx, setLineIdx] = useState(0);
-  const [listeners, setListeners] = useState(1247);
   const [statusIdx, setStatusIdx] = useState(0);
   const [visibleListeners, setVisibleListeners] = useState(LISTENER_POOL.slice(0, 5));
 
@@ -66,13 +70,6 @@ export default function RadioView({
 
   useEffect(() => {
     const t = setInterval(() => setLineIdx(i => (i + 1) % VIO_LINES.length), 5500);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setListeners(l => Math.max(1100, l + Math.round((Math.random() - 0.5) * 8)));
-    }, 3500);
     return () => clearInterval(t);
   }, []);
 
@@ -99,23 +96,28 @@ export default function RadioView({
     return () => clearInterval(t);
   }, []);
 
-  // Position the dial thumb proportional to where this song sits in the list.
+  // Position the dial proportional to where this song sits in the list.
   const idx = Math.max(0, songs.findIndex(s => s.id === song.id));
-  const scanPct = 18 + (idx / Math.max(1, songs.length - 1)) * 64;
+  const scanPct = 8 + (idx / Math.max(1, songs.length - 1)) * 84;
 
-  // Up next: cycle forward from current
-  const nextSongs = songs.length > 1
-    ? [
-        songs[(idx + 1) % songs.length],
-        songs[(idx + 2) % songs.length],
-      ]
-    : [];
-  const previousSong = songs[(idx - 1 + songs.length) % songs.length];
+  // Up next preview (server-driven if live, else next song in list)
+  const previewUpNext = upNext
+    ? [upNext]
+    : (songs.length > 1
+      ? [songs[(idx + 1) % songs.length], songs[(idx + 2) % songs.length]]
+      : []);
 
+  const displayedListenerCount = listenerCount ?? 1;
   const statusLines = [
-    { dot: "bg-red-500", text: <>Pe Undă · <span className="font-mono text-white/70">{listeners.toLocaleString("ro-RO")}</span></> },
+    {
+      dot: "bg-red-500",
+      text: <>Pe Undă · <span className="font-mono text-white/70">{displayedListenerCount.toLocaleString("ro-RO")}</span></>,
+    },
     { dot: "bg-pink-500", text: <>Vio · <span className="text-pink-300">live</span></> },
-    { dot: "bg-cyan-400", text: <span className="truncate max-w-[160px] inline-block align-middle">Acum · {song.title}</span> },
+    {
+      dot: "bg-cyan-400",
+      text: <span className="truncate max-w-[160px] inline-block align-middle">Acum · {song.title}</span>,
+    },
   ];
   const status = statusLines[statusIdx];
 
@@ -134,6 +136,21 @@ export default function RadioView({
           {timeOfDayLabel()}
         </span>
       </div>
+
+      {/* Solo-mode banner */}
+      {!liveMode && (
+        <button
+          onClick={onReturnToLive}
+          className="w-full max-w-[340px] flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-sans active:scale-[0.99] transition-transform"
+          style={{ background: "rgba(233,30,140,0.10)", border: "1px solid rgba(233,30,140,0.30)", color: "#ffb1cc" }}
+        >
+          <span className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-pink-400" />
+            Asculți pe cont propriu
+          </span>
+          <span className="font-mono text-[10px] uppercase tracking-widest">↩ pe undă</span>
+        </button>
+      )}
 
       {/* Player card */}
       <div className="w-full max-w-[340px] rounded-[28px] overflow-hidden" style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.45)" }}>
@@ -175,7 +192,7 @@ export default function RadioView({
             </button>
           </div>
 
-          {/* Waveform + frequency number */}
+          {/* Waveform + GENRE in big serif */}
           <div className="relative h-[100px] mx-4">
             <Oscilloscope playing={playing} />
             <div className="absolute inset-0 flex items-center justify-between z-10 px-1">
@@ -186,9 +203,12 @@ export default function RadioView({
               >
                 ◀◀
               </button>
-              <div className="text-center leading-none select-none" style={{ textShadow: "0 2px 16px rgba(0,0,0,0.4)" }}>
-                <div className="text-white font-sans font-bold" style={{ fontSize: "clamp(42px,11vw,52px)" }}>
-                  {song.freq}
+              <div className="text-center leading-none select-none px-2 max-w-[60%]" style={{ textShadow: "0 2px 16px rgba(0,0,0,0.4)" }}>
+                <div
+                  className="text-white font-serif font-normal truncate"
+                  style={{ fontSize: "clamp(20px, 5vw, 28px)", letterSpacing: "0.01em" }}
+                >
+                  {song.genre}
                 </div>
               </div>
               <button
@@ -202,12 +222,9 @@ export default function RadioView({
           </div>
 
           {/* Song info */}
-          <div className="text-center px-5 pt-4 pb-1">
+          <div className="text-center px-5 pt-3 pb-1">
             <div className="text-white font-sans font-bold text-[22px] leading-tight">{song.title}</div>
-            <div className="text-white/60 font-sans text-[13px] mt-1">{song.genre} · {song.duration}</div>
-            <div className="text-white/45 font-sans text-[11px] mt-1.5">
-              Anterior · {previousSong.title} · acum 3 min
-            </div>
+            <div className="text-white/60 font-sans text-[13px] mt-1">{song.duration}</div>
           </div>
 
           {/* Action buttons */}
@@ -237,7 +254,7 @@ export default function RadioView({
           </div>
         </div>
 
-        {/* Frequency dial section (paper) */}
+        {/* Position indicator (no freq numbers) */}
         <div className="px-5 pt-3 pb-4" style={{ background: "#f3eee5" }}>
           <div className="flex items-end gap-[3px] h-7 mb-2">
             {TICK_HEIGHTS.map((h, i) => (
@@ -248,29 +265,32 @@ export default function RadioView({
               />
             ))}
           </div>
-          <div className="freq-track mb-2">
+          <div className="freq-track mb-1">
             <div className="h-full rounded-full" style={{ width: `${scanPct}%`, background: "rgba(233,30,140,0.4)" }} />
             <div className="freq-thumb" style={{ left: `${scanPct}%` }} />
           </div>
-          <div className="flex justify-between font-sans text-[11px] mt-1" style={{ color: "#9b8f7d" }}>
-            <span>90</span><span>95</span><span>100</span><span>105</span><span>110</span>
+          <div className="flex justify-between font-mono text-[10px] mt-1.5 tracking-wider uppercase" style={{ color: "#9b8f7d" }}>
+            <span>{idx + 1} / {songs.length}</span>
+            <span>{liveMode ? "PE UNDĂ" : "PE CONT PROPRIU"}</span>
           </div>
         </div>
       </div>
 
       {/* Up Next */}
-      <div className="w-full max-w-[340px]">
-        <div className="text-[10px] font-mono tracking-widest uppercase text-white/35 mb-1.5 px-1">Urmează</div>
-        <div className="flex flex-col gap-1.5">
-          {nextSongs.map(s => (
-            <div key={s.id} className="flex items-center gap-3 px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: `linear-gradient(135deg, ${s.gradient[0]}, ${s.gradient[1]})` }} />
-              <span className="font-mono text-[11px] text-white/55 shrink-0 w-10">{s.freq}</span>
-              <span className="font-sans text-[12.5px] text-white/85 truncate flex-1">{s.title}</span>
-            </div>
-          ))}
+      {previewUpNext.length > 0 && (
+        <div className="w-full max-w-[340px]">
+          <div className="text-[10px] font-mono tracking-widest uppercase text-white/35 mb-1.5 px-1">Urmează</div>
+          <div className="flex flex-col gap-1.5">
+            {previewUpNext.map(s => (
+              <div key={s.id} className="flex items-center gap-3 px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: `linear-gradient(135deg, ${s.gradient[0]}, ${s.gradient[1]})` }} />
+                <span className="font-sans text-[12.5px] text-white/85 truncate flex-1">{s.title}</span>
+                <span className="font-mono text-[10px] text-white/40 shrink-0">{s.genre}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Mood + Vio quote + listeners */}
       <div className="w-full max-w-[340px] flex flex-col items-center gap-2">
@@ -291,7 +311,11 @@ export default function RadioView({
               </div>
             ))}
           </div>
-          <span className="text-[10px] font-mono text-white/40 tracking-wider ml-1">+{(listeners - visibleListeners.length).toLocaleString("ro-RO")} în cabină</span>
+          {listenerCount !== null && (
+            <span className="text-[10px] font-mono text-white/40 tracking-wider ml-1">
+              {listenerCount === 1 ? "1 ascultător" : `${listenerCount} ascultători`} în cabină
+            </span>
+          )}
         </div>
       </div>
     </div>

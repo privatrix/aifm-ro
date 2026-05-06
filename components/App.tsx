@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { SONGS as MOCK_SONGS, type Song } from "@/lib/data";
 import Nav from "./Nav";
 import RadioView from "./RadioView";
@@ -9,10 +9,17 @@ import NotesView from "./NotesView";
 
 type Tab = "radio" | "biblioteca" | "top" | "bilete";
 
+interface NowPlaying {
+  current: Song & { durationSeconds: number };
+  startedAt: string;       // ISO
+  elapsedSeconds: number;
+  serverNow: string;       // ISO
+  upNext: (Song & { durationSeconds: number }) | null;
+}
+
 export default function App() {
-  const [tab, setTab]           = useState<Tab>("radio");
-  const [playing, setPlaying]   = useState(false);
-  const [songIdx, setSongIdx]   = useState(0);
+  const [tab, setTab] = useState<Tab>("radio");
+  const [playing, setPlaying] = useState(false);
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [noteSent, setNoteSent] = useState(false);
@@ -21,10 +28,16 @@ export default function App() {
     () => Object.fromEntries(MOCK_SONGS.map(s => [s.id, s.votes]))
   );
   const [voted, setVoted] = useState<Set<number>>(new Set());
+
+  // "Live mode": follow the server's now-playing. "Solo mode": user picked their own song.
+  const [liveMode, setLiveMode] = useState(true);
+  const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
+  const [soloIdx, setSoloIdx] = useState(0);
+  const [listenerCount, setListenerCount] = useState<number | null>(null);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Pull live songs from /api/songs. If the API has any rows, use them.
-  // Otherwise we keep the mock data so the page never feels broken.
+  // 1. Pull catalog
   useEffect(() => {
     let cancelled = false;
     fetch("/api/songs", { cache: "no-store" })
@@ -32,61 +45,155 @@ export default function App() {
       .then((j) => {
         if (cancelled || !j?.ok || !Array.isArray(j.songs) || j.songs.length === 0) return;
         setSongs(j.songs as Song[]);
-        setSongIdx(0);
         setVotes(Object.fromEntries((j.songs as Song[]).map((s) => [s.id, s.votes])));
       })
-      .catch(() => { /* keep mock fallback */ });
+      .catch(() => { /* keep mock */ });
     return () => { cancelled = true; };
   }, []);
 
-  const currentSong = songs[songIdx] ?? songs[0];
+  // 2. Poll /api/now every 7s while in live mode
+  useEffect(() => {
+    if (!liveMode) return;
+    let cancelled = false;
+    const fetchNow = async () => {
+      try {
+        const r = await fetch("/api/now", { cache: "no-store" });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (cancelled || !j?.ok) return;
+        setNowPlaying({
+          current: j.current,
+          startedAt: j.startedAt,
+          elapsedSeconds: j.elapsedSeconds,
+          serverNow: j.serverNow,
+          upNext: j.upNext,
+        });
+      } catch { /* network blip */ }
+    };
+    fetchNow();
+    const t = setInterval(fetchNow, 7000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [liveMode]);
 
-  // Sync the <audio> element to currentSong + playing state.
+  // 3. Heartbeat for listener count (every 25s)
+  useEffect(() => {
+    let cancelled = false;
+    const beat = async () => {
+      try {
+        const r = await fetch("/api/heartbeat", { method: "POST", cache: "no-store" });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (!cancelled && j?.ok) setListenerCount(j.listeners ?? null);
+      } catch {}
+    };
+    beat();
+    const t = setInterval(beat, 25000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, []);
+
+  // The "current song" in live mode = server's; in solo mode = user's pick.
+  const currentSong: Song | undefined = liveMode
+    ? (nowPlaying?.current ?? songs[0])
+    : songs[soloIdx];
+
+  // 4. Sync audio src to currentSong
   useEffect(() => {
     const a = audioRef.current;
-    if (!a) return;
-    if (!currentSong?.fileUrl) return;
+    if (!a || !currentSong?.fileUrl) return;
+    if (a.src === currentSong.fileUrl) return;
 
-    // Only swap src when it actually changes — avoids restart on re-renders.
-    if (a.src !== currentSong.fileUrl) {
-      a.src = currentSong.fileUrl;
+    a.src = currentSong.fileUrl;
+    // In live mode, seek to wherever the broadcast is.
+    if (liveMode && nowPlaying) {
+      const elapsed = nowPlaying.elapsedSeconds;
+      a.load();
+      a.addEventListener("loadedmetadata", () => {
+        try {
+          if (Number.isFinite(elapsed) && elapsed > 0 && elapsed < (a.duration || 9999)) {
+            a.currentTime = elapsed;
+          }
+        } catch {}
+      }, { once: true });
+    } else {
       a.load();
     }
-  }, [currentSong?.id, currentSong?.fileUrl]);
+  }, [currentSong?.id, currentSong?.fileUrl, liveMode, nowPlaying?.startedAt]);
 
+  // 5. Play/pause based on `playing`
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
     if (playing && currentSong?.fileUrl) {
       const p = a.play();
       if (p && typeof p.catch === "function") {
-        p.catch(() => {
-          // Autoplay was blocked — surface as paused so the UI is honest.
-          setPlaying(false);
-        });
+        p.catch(() => setPlaying(false));
       }
     } else {
       a.pause();
     }
   }, [playing, currentSong?.id, currentSong?.fileUrl]);
 
-  const toggleVote = (id: number) => {
+  // Vote handler (with API call)
+  const toggleVote = useCallback(async (id: number) => {
+    const wasVoted = voted.has(id);
+    // Optimistic update
     setVoted(prev => {
-      const next     = new Set(prev);
-      const wasVoted = next.has(id);
+      const next = new Set(prev);
       wasVoted ? next.delete(id) : next.add(id);
-      setVotes(v => ({ ...v, [id]: v[id] + (wasVoted ? -1 : 1) }));
       return next;
+    });
+    setVotes(v => ({ ...v, [id]: Math.max(0, (v[id] || 0) + (wasVoted ? -1 : 1)) }));
+    try {
+      const r = await fetch(`/api/songs/${id}/vote`, { method: "POST", cache: "no-store" });
+      if (!r.ok) throw new Error("vote failed");
+      const j = await r.json();
+      if (j?.ok) {
+        // Reconcile with server truth
+        setVotes(v => ({ ...v, [id]: j.votes ?? v[id] }));
+        setVoted(prev => {
+          const next = new Set(prev);
+          j.voted ? next.add(id) : next.delete(id);
+          return next;
+        });
+      }
+    } catch {
+      // Revert
+      setVoted(prev => {
+        const next = new Set(prev);
+        wasVoted ? next.add(id) : next.delete(id);
+        return next;
+      });
+      setVotes(v => ({ ...v, [id]: Math.max(0, (v[id] || 0) + (wasVoted ? 1 : -1)) }));
+    }
+  }, [voted]);
+
+  // Engage solo mode when user manually changes track
+  function gotoSong(idx: number) {
+    setLiveMode(false);
+    setSoloIdx(idx);
+    setTab("radio");
+  }
+  function returnToLive() {
+    setLiveMode(true);
+  }
+
+  const prevSong = () => {
+    setLiveMode(false);
+    setSoloIdx(i => {
+      const cur = liveMode ? songs.findIndex(s => s.id === currentSong?.id) : i;
+      return ((cur - 1) + songs.length) % songs.length;
+    });
+  };
+  const nextSong = () => {
+    setLiveMode(false);
+    setSoloIdx(i => {
+      const cur = liveMode ? songs.findIndex(s => s.id === currentSong?.id) : i;
+      return ((cur + 1) % songs.length);
     });
   };
 
-  const prevSong = () => setSongIdx(i => (i - 1 + songs.length) % songs.length);
-  const nextSong = () => setSongIdx(i => (i + 1) % songs.length);
-  const playSong = (idx: number) => { setSongIdx(idx); setTab("radio"); };
-
   const submitNote = () => {
     if (!noteText.trim()) return;
-    // Persist to local queue so "Coada mea" survives a refresh.
     try {
       const KEY = "aifm:my-notes";
       const raw = typeof window !== "undefined" ? localStorage.getItem(KEY) : null;
@@ -99,6 +206,12 @@ export default function App() {
       });
       if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(list));
     } catch { /* localStorage unavailable */ }
+    // Also POST to backend (best-effort, stage 6 will wire admin inbox)
+    void fetch("/api/notes", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: noteText.trim() }),
+    }).catch(() => {});
     setNoteSent(true);
     setTimeout(() => {
       setShowNote(false);
@@ -106,14 +219,26 @@ export default function App() {
     }, 1600);
   };
 
-  // Auto-advance when a song ends
+  // When auto-advance fires (in solo mode), step forward; in live mode let server do it.
   function handleAudioEnded() {
-    setSongIdx(i => (i + 1) % songs.length);
+    if (liveMode) {
+      // Refetch /api/now — server has already advanced.
+      fetch("/api/now", { cache: "no-store" })
+        .then(r => r.json())
+        .then(j => {
+          if (j?.ok) setNowPlaying(j);
+        }).catch(() => {});
+    } else {
+      setSoloIdx(i => (i + 1) % songs.length);
+    }
+  }
+
+  if (!currentSong) {
+    return <div className="fixed inset-0 flex items-center justify-center text-bone/60 font-mono text-sm">Se încarcă…</div>;
   }
 
   return (
     <div className="fixed inset-0 flex flex-col">
-      {/* Persistent audio element — single source of truth for playback */}
       <audio
         ref={audioRef}
         onEnded={handleAudioEnded}
@@ -125,7 +250,6 @@ export default function App() {
         className="hidden"
       />
 
-      {/* ── Views ── */}
       <div className="flex-1 min-h-0 relative overflow-hidden">
         {tab === "radio" && (
           <RadioView
@@ -134,12 +258,16 @@ export default function App() {
             playing={playing}
             setPlaying={setPlaying}
             voted={voted.has(currentSong.id)}
-            votes={votes[currentSong.id]}
+            votes={votes[currentSong.id] ?? 0}
             onVote={() => toggleVote(currentSong.id)}
             onPrev={prevSong}
             onNext={nextSong}
             onNote={() => setShowNote(true)}
             onOpenLibrary={() => setTab("biblioteca")}
+            liveMode={liveMode}
+            onReturnToLive={returnToLive}
+            upNext={nowPlaying?.upNext ?? null}
+            listenerCount={listenerCount}
           />
         )}
         {tab === "biblioteca" && (
@@ -149,7 +277,7 @@ export default function App() {
             votes={votes}
             onVote={toggleVote}
             currentSong={currentSong}
-            onPlay={playSong}
+            onPlay={gotoSong}
             onBack={() => setTab("radio")}
           />
         )}
@@ -160,7 +288,7 @@ export default function App() {
             votes={votes}
             onVote={toggleVote}
             currentSong={currentSong}
-            onPlay={playSong}
+            onPlay={gotoSong}
           />
         )}
         {tab === "bilete" && (
@@ -168,10 +296,8 @@ export default function App() {
         )}
       </div>
 
-      {/* ── Navigation ── */}
       <Nav active={tab} setActive={setTab} />
 
-      {/* ── Note modal (white bottom sheet) ── */}
       {showNote && (
         <div
           className="fixed inset-0 z-50 flex items-end"
@@ -184,10 +310,7 @@ export default function App() {
           >
             {!noteSent ? (
               <>
-                {/* Handle bar */}
                 <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5" />
-
-                {/* Header */}
                 <div className="flex items-center gap-3 mb-5">
                   <div
                     className="w-11 h-11 rounded-2xl flex items-center justify-center font-serif text-[20px] text-white shrink-0"
@@ -196,11 +319,10 @@ export default function App() {
                     V
                   </div>
                   <div>
-                    <div className="font-sans font-bold text-[16px] text-ink">Pasează un bilet lui Vio</div>
-                    <div className="font-sans text-[11px] text-gray-400 mt-0.5">poate fi citit live pe undă</div>
+                    <div className="font-sans font-bold text-[16px]" style={{ color: "#1a1820" }}>Pasează un bilet lui Vio</div>
+                    <div className="font-sans text-[11px] mt-0.5" style={{ color: "#9b8f7d" }}>poate fi citit live pe undă</div>
                   </div>
                 </div>
-
                 <textarea
                   className="note-textarea mb-2"
                   rows={4}
@@ -211,21 +333,20 @@ export default function App() {
                   autoFocus
                 />
                 <div className="flex justify-between mb-5">
-                  <span className="font-sans text-[12px] text-gray-400">{noteText.length}/240</span>
+                  <span className="font-sans text-[12px]" style={{ color: "#9b8f7d" }}>{noteText.length}/240</span>
                 </div>
-
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowNote(false)}
-                    className="flex-1 h-12 rounded-2xl font-sans text-[14px] font-medium text-gray-500"
-                    style={{ background: "#f5f5f5" }}
+                    className="flex-1 h-12 rounded-2xl font-sans text-[14px] font-medium"
+                    style={{ background: "#ece4d3", color: "#6e6657" }}
                   >
                     Renunță
                   </button>
                   <button
                     onClick={submitNote}
                     disabled={!noteText.trim()}
-                    className="flex-1 h-12 rounded-2xl font-sans text-[14px] font-semibold text-white active:scale-97 transition-transform disabled:opacity-40"
+                    className="flex-1 h-12 rounded-2xl font-sans text-[14px] font-semibold text-white active:scale-[0.97] transition-transform disabled:opacity-40"
                     style={{ background: "linear-gradient(135deg, #E91E8C, #C2185B)" }}
                   >
                     Trimite
@@ -240,8 +361,8 @@ export default function App() {
                 >
                   V
                 </div>
-                <div className="font-sans font-bold text-[20px] text-ink mb-1">Vio l-a primit.</div>
-                <div className="font-sans text-[13px] text-gray-400">Ascultă unda. Poate te strigă.</div>
+                <div className="font-sans font-bold text-[20px] mb-1" style={{ color: "#1a1820" }}>Vio l-a primit.</div>
+                <div className="font-sans text-[13px]" style={{ color: "#9b8f7d" }}>Ascultă unda. Poate te strigă.</div>
               </div>
             )}
           </div>

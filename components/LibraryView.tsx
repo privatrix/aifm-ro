@@ -96,7 +96,7 @@ export default function LibraryView({ songs, voted, votes, onVote, currentSong, 
                     </button>
                   </div>
                   <div className="mt-2">
-                    <div className="font-sans font-bold text-white" style={{ fontSize: "clamp(36px,10vw,44px)", lineHeight: 1 }}>{song.freq}</div>
+                    <div className="font-serif font-normal text-white" style={{ fontSize: "clamp(22px,6vw,28px)", lineHeight: 1.1, letterSpacing: "0.01em" }}>{song.genre}</div>
                     <div className="font-sans font-bold text-white text-[19px] mt-1">{song.title}</div>
                     <div className="font-sans text-white/60 text-[13px] mt-0.5">
                       {song.genre} · {song.duration} · {votes[song.id]} voturi
@@ -146,8 +146,8 @@ export default function LibraryView({ songs, voted, votes, onVote, currentSong, 
                     <span className="font-sans font-semibold text-white text-[15px] truncate">{song.title}</span>
                   </div>
                 </div>
-                <span className="font-sans font-bold text-[15px] shrink-0" style={{ color: "rgba(255,255,255,0.75)" }}>
-                  {song.freq}
+                <span className="font-mono text-[10px] shrink-0 uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.65)" }}>
+                  {song.genre}
                 </span>
               </div>
             );
