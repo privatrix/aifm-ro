@@ -1,0 +1,11 @@
+/* Admin shell — neutral, monospace, distinct from the public booth aesthetic. */
+.admin-root {
+  background: #09090b; /* zinc-950 */
+  color: #e4e4e7;      /* zinc-200 */
+  font-family: var(--font-mono), ui-monospace, Menlo, monospace;
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+}
+.admin-root * { box-sizing: border-box; }
+.admin-root table { font-variant-numeric: tabular-nums; }
