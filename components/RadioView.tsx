@@ -68,6 +68,7 @@ export default function RadioView({
   const [statusIdx, setStatusIdx] = useState(0);
   const [visibleListeners, setVisibleListeners] = useState(LISTENER_POOL.slice(0, 5));
   const [vioLines, setVioLines] = useState<string[]>(MOCK_LINES);
+  const [liveThought, setLiveThought] = useState<string | null>(null);
 
   // Pull real Vio lines from /api/vio-lines, filtered by current band.
   useEffect(() => {
@@ -86,6 +87,25 @@ export default function RadioView({
         }
       }).catch(() => {});
     return () => { cancelled = true; };
+  }, []);
+
+  // Poll for the latest LLM-generated thought every 30s. When fresh (< 5min)
+  // it overrides the static pool as the displayed line.
+  useEffect(() => {
+    let cancelled = false;
+    const fetchThought = () => {
+      fetch("/api/vio-thought", { cache: "no-store" })
+        .then(r => r.ok ? r.json() : null)
+        .then(j => {
+          if (cancelled || !j?.ok) return;
+          if (j.thought?.text) setLiveThought(j.thought.text);
+          else setLiveThought(null);
+        })
+        .catch(() => {});
+    };
+    fetchThought();
+    const t = setInterval(fetchThought, 30000);
+    return () => { cancelled = true; clearInterval(t); };
   }, []);
 
   // Update CSS custom properties when song changes — drives the ambient tint
@@ -323,9 +343,21 @@ export default function RadioView({
       {/* Mood + Vio quote + listeners */}
       <div className="w-full max-w-[340px] flex flex-col items-center gap-2">
         <span className="text-[14px] opacity-50 animate-breathe">{moodEmoji()}</span>
-        <p key={lineIdx} className="font-serif text-[15px] text-white/65 italic leading-snug text-center px-2 animate-fade-in">
-          &ldquo;{vioLines[lineIdx % Math.max(1, vioLines.length)]}&rdquo;
-        </p>
+        {liveThought ? (
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: "#ffb1cc" }}>
+              <span className="inline-block w-1 h-1 rounded-full bg-pink-400 mr-1.5 align-middle animate-breathe" />
+              vio gândește acum
+            </span>
+            <p key={liveThought} className="font-serif text-[15.5px] text-white/85 italic leading-snug text-center px-2 animate-fade-in">
+              &ldquo;{liveThought}&rdquo;
+            </p>
+          </div>
+        ) : (
+          <p key={lineIdx} className="font-serif text-[15px] text-white/65 italic leading-snug text-center px-2 animate-fade-in">
+            &ldquo;{vioLines[lineIdx % Math.max(1, vioLines.length)]}&rdquo;
+          </p>
+        )}
         <div className="flex items-center gap-1.5 mt-1">
           <div className="flex -space-x-2">
             {visibleListeners.map((l, i) => (

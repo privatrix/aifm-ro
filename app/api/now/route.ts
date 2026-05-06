@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { songs, playbackState, playHistory, type Song } from "@/db/schema";
 import { pickNextSong } from "@/lib/dj";
+import { generateVioThought } from "@/lib/vio-llm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,6 +87,12 @@ export async function GET() {
         .where(eq(playbackState.id, 1));
       // Append new play_history.
       await db.insert(playHistory).values({ songId: next.id, startedAt: newStart });
+
+      // Fire-and-forget Vio thought generation for the new song.
+      // (waitUntil would be ideal but we just dispatch and don't await.)
+      if (process.env.ANTHROPIC_API_KEY) {
+        void generateVioThought().catch(() => { /* swallow */ });
+      }
 
       // Pick the song after that for "Up Next" preview.
       const upNext = await pickNextSong(next.id);

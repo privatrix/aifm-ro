@@ -70,6 +70,16 @@ export const vioLines = aifm.table("vio_lines", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const vioThoughts = aifm.table("vio_thoughts", {
+  id: serial("id").primaryKey(),
+  text: text("text").notNull(),
+  songId: integer("song_id"),
+  band: text("band"),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  approved: boolean("approved").notNull().default(true),
+  source: text("source").notNull().default("llm"),
+});
+
 export const voteLog = aifm.table(
   "vote_log",
   {
@@ -89,3 +99,4 @@ export type Note = typeof notes.$inferSelect;
 export type NewNote = typeof notes.$inferInsert;
 export type VioLine = typeof vioLines.$inferSelect;
 export type NewVioLine = typeof vioLines.$inferInsert;
+export type VioThought = typeof vioThoughts.$inferSelect;
