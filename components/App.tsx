@@ -40,6 +40,19 @@ export default function App() {
 
   const submitNote = () => {
     if (!noteText.trim()) return;
+    // Persist to local queue so "Coada mea" survives a refresh.
+    try {
+      const KEY = "aifm:my-notes";
+      const raw = typeof window !== "undefined" ? localStorage.getItem(KEY) : null;
+      const list: Array<{ id: string; text: string; createdAt: number }> =
+        raw ? JSON.parse(raw) : [];
+      list.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        text: noteText.trim(),
+        createdAt: Date.now(),
+      });
+      if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(list));
+    } catch { /* localStorage unavailable */ }
     setNoteSent(true);
     setTimeout(() => {
       setShowNote(false);
@@ -48,7 +61,7 @@ export default function App() {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col" style={{ background: "#6B35A8" }}>
+    <div className="fixed inset-0 flex flex-col">
 
       {/* ── Views ── */}
       <div className="flex-1 min-h-0 relative overflow-hidden">

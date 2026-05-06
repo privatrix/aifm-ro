@@ -22,7 +22,7 @@ export default function LibraryView({ songs, voted, votes, onVote, currentSong, 
   );
 
   return (
-    <div className="absolute inset-0 flex flex-col" style={{ background: "#6B35A8" }}>
+    <div className="absolute inset-0 flex flex-col pt-3">
       <div className="white-view">
 
         {/* Header */}
@@ -31,19 +31,19 @@ export default function LibraryView({ songs, voted, votes, onVote, currentSong, 
             <button
               onClick={onBack}
               className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-transform"
-              style={{ background: "#f5f5f5" }}
+              style={{ background: "#ece4d3" }}
               aria-label="Înapoi"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M19 12H5M12 5l-7 7 7 7"/>
               </svg>
             </button>
-            <h1 className="font-sans font-bold text-[20px] text-ink flex-1">Bibliotecă</h1>
-            <span className="font-sans text-[12px] text-gray-400">{songs.length} piese</span>
+            <h1 className="font-serif font-normal text-[24px] flex-1" style={{ color: "#1a1820" }}>Bibliotecă</h1>
+            <span className="font-mono text-[11px]" style={{ color: "#9b8f7d" }}>{songs.length} piese</span>
           </div>
           {/* Search */}
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9b8f7d" strokeWidth="2" strokeLinecap="round">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
             <input
@@ -51,8 +51,8 @@ export default function LibraryView({ songs, voted, votes, onVote, currentSong, 
               placeholder="Caută piese sau gen..."
               value={query}
               onChange={e => setQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-2xl font-sans text-[14px] text-ink placeholder-gray-400 outline-none"
-              style={{ background: "#f5f5f5", border: "none" }}
+              className="w-full pl-9 pr-4 py-2.5 rounded-2xl font-sans text-[14px] outline-none"
+              style={{ background: "#fbf6ec", border: "1px solid #e3dac9", color: "#1a1820" }}
             />
           </div>
         </div>
@@ -60,7 +60,7 @@ export default function LibraryView({ songs, voted, votes, onVote, currentSong, 
         {/* Station list */}
         <div className="view-scroll">
           {visible.length === 0 && (
-            <div className="text-center py-16 text-gray-400 font-sans text-[14px]">Nicio piesă găsită.</div>
+            <div className="text-center py-16 font-sans text-[14px]" style={{ color: "#9b8f7d" }}>Nicio piesă găsită.</div>
           )}
 
           {visible.map((song, visIdx) => {

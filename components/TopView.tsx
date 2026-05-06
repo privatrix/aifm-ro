@@ -30,14 +30,17 @@ export default function TopView({ songs, voted, votes, onVote, currentSong, onPl
   };
 
   return (
-    <div className="absolute inset-0 flex flex-col" style={{ background: "#6B35A8" }}>
+    <div className="absolute inset-0 flex flex-col pt-3">
       <div className="white-view">
 
         {/* Header */}
         <div className="white-header">
           <div className="flex items-center justify-between">
-            <h1 className="font-sans font-bold text-[20px] text-ink">Top Voturi</h1>
-            <div className="flex gap-1 p-1 rounded-full" style={{ background: "#f5f5f5" }}>
+            <div>
+              <h1 className="font-serif font-normal text-[24px]" style={{ color: "#1a1820" }}>Top Voturi</h1>
+              <div className="font-mono text-[10px] tracking-wider" style={{ color: "#9b8f7d" }}>CELE MAI VOTATE ÎN ULTIMELE 24H</div>
+            </div>
+            <div className="flex gap-1 p-1 rounded-full" style={{ background: "#ece4d3" }}>
               {([["saptamana", "Săptămâna"], ["toate", "Toate"]] as [Period, string][]).map(([id, label]) => (
                 <button
                   key={id}
@@ -68,7 +71,8 @@ export default function TopView({ songs, voted, votes, onVote, currentSong, onPl
             return (
               <div
                 key={song.id}
-                className="flex items-center gap-3 px-5 py-3 cursor-pointer active:bg-gray-50 transition-colors border-b border-gray-50"
+                className="flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors"
+                style={{ borderBottom: "1px solid #e7dfd1" }}
                 onClick={() => onPlay(songs.findIndex(s => s.id === song.id))}
               >
                 {/* Color bar */}
@@ -93,7 +97,7 @@ export default function TopView({ songs, voted, votes, onVote, currentSong, onPl
                     {isPlaying && (
                       <span className="w-1.5 h-1.5 rounded-full animate-breathe shrink-0" style={{ background: "#E91E8C" }} />
                     )}
-                    <span className="font-sans font-semibold text-[14px] text-ink truncate">{song.title}</span>
+                    <span className="font-sans font-semibold text-[14px] truncate" style={{ color: "#1a1820" }}>{song.title}</span>
                   </div>
                   <div className="flex items-center gap-2 mb-1.5">
                     <span
@@ -102,10 +106,10 @@ export default function TopView({ songs, voted, votes, onVote, currentSong, onPl
                     >
                       {song.genre}
                     </span>
-                    <span className="font-sans text-[11px] text-gray-400">{song.duration}</span>
+                    <span className="font-sans text-[11px]" style={{ color: "#9b8f7d" }}>{song.duration}</span>
                   </div>
                   {/* Vote bar */}
-                  <div className="h-[2px] rounded-full bg-gray-100">
+                  <div className="h-[2px] rounded-full" style={{ background: "#e7dfd1" }}>
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${pct}%`, background: `linear-gradient(to right, ${song.gradient[0]}, ${song.gradient[1]})` }}
@@ -123,7 +127,7 @@ export default function TopView({ songs, voted, votes, onVote, currentSong, onPl
                     className="active:scale-90 transition-transform"
                     aria-label="Votează"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill={voted.has(song.id) ? "#E91E8C" : "none"} stroke={voted.has(song.id) ? "#E91E8C" : "#ddd"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill={voted.has(song.id) ? "#E91E8C" : "none"} stroke={voted.has(song.id) ? "#E91E8C" : "#cdc2ad"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
                     </svg>
                   </button>
@@ -131,7 +135,7 @@ export default function TopView({ songs, voted, votes, onVote, currentSong, onPl
               </div>
             );
           })}
-          <div className="text-center py-6 font-sans text-[11px] text-gray-300 tracking-wider">
+          <div className="text-center py-6 font-mono text-[11px] tracking-wider" style={{ color: "#bcb19a" }}>
             ACTUALIZAT ÎN TIMP REAL
           </div>
         </div>

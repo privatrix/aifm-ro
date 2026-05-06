@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { Song, VIO_LINES } from "@/lib/data";
+import { useEffect, useState } from "react";
+import { Song, VIO_LINES, SONGS } from "@/lib/data";
 import Oscilloscope from "./Oscilloscope";
 
 interface Props {
@@ -16,12 +16,52 @@ interface Props {
   onOpenLibrary: () => void;
 }
 
-// Static tick bars for the frequency slider section
 const TICK_HEIGHTS = [6,10,7,14,9,18,8,22,12,16,8,20,25,18,12,7,22,16,10,8,20,14,9,18,12,7,16,11,19,8,14,22,10,16];
 
-export default function RadioView({ song, playing, setPlaying, voted, votes, onVote, onPrev, onNext, onNote, onOpenLibrary }: Props) {
-  const [lineIdx, setLineIdx]     = useState(0);
+const LISTENER_POOL: { city: string; initial: string; color: string }[] = [
+  { city: "Iași", initial: "A", color: "#E91E8C" },
+  { city: "Chișinău", initial: "M", color: "#8E24AA" },
+  { city: "București", initial: "I", color: "#1565C0" },
+  { city: "Cluj", initial: "R", color: "#F57C00" },
+  { city: "Timișoara", initial: "V", color: "#7B1FA2" },
+  { city: "Brașov", initial: "E", color: "#00695C" },
+  { city: "Sibiu", initial: "M", color: "#AD1457" },
+  { city: "Constanța", initial: "L", color: "#5E35B1" },
+  { city: "Bălți", initial: "T", color: "#BF360C" },
+  { city: "Galați", initial: "D", color: "#1565C0" },
+];
+
+function moodEmoji(): string {
+  const h = new Date().getHours();
+  if (h >= 6 && h < 10) return "☕";
+  if (h >= 10 && h < 18) return "☀️";
+  if (h >= 18 && h < 22) return "🌆";
+  return "🌙";
+}
+
+function timeOfDayLabel(): string {
+  const h = new Date().getHours();
+  if (h >= 6 && h < 10) return "Programul de dimineață";
+  if (h >= 10 && h < 18) return "Programul de zi";
+  if (h >= 18 && h < 22) return "Programul de seară";
+  return "Programul de noapte";
+}
+
+export default function RadioView({
+  song, playing, setPlaying, voted, votes, onVote, onPrev, onNext, onNote, onOpenLibrary,
+}: Props) {
+  const [lineIdx, setLineIdx] = useState(0);
   const [listeners, setListeners] = useState(1247);
+  const [statusIdx, setStatusIdx] = useState(0);
+  const [visibleListeners, setVisibleListeners] = useState(LISTENER_POOL.slice(0, 5));
+
+  // Update CSS custom properties when song changes — drives the ambient tint
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      document.documentElement.style.setProperty("--accent-from", song.gradient[0]);
+      document.documentElement.style.setProperty("--accent-to", song.gradient[1]);
+    });
+  }, [song.gradient]);
 
   useEffect(() => {
     const t = setInterval(() => setLineIdx(i => (i + 1) % VIO_LINES.length), 5500);
@@ -35,32 +75,69 @@ export default function RadioView({ song, playing, setPlaying, voted, votes, onV
     return () => clearInterval(t);
   }, []);
 
-  const scanPct = 18 + ((song.id - 1) / 19) * 64;
+  useEffect(() => {
+    const t = setInterval(() => setStatusIdx(i => (i + 1) % 3), 4000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Drift listeners in/out
+  useEffect(() => {
+    const t = setInterval(() => {
+      setVisibleListeners(prev => {
+        const next = [...prev];
+        const remove = Math.floor(Math.random() * next.length);
+        next.splice(remove, 1);
+        let add: typeof LISTENER_POOL[number];
+        do {
+          add = LISTENER_POOL[Math.floor(Math.random() * LISTENER_POOL.length)];
+        } while (next.find(l => l.city === add.city && l.initial === add.initial));
+        next.push(add);
+        return next;
+      });
+    }, 6000);
+    return () => clearInterval(t);
+  }, []);
+
+  const scanPct = 18 + ((song.id - 1) / Math.max(1, SONGS.length - 1)) * 64;
+
+  // Up next: cycle forward from current
+  const currentIdx = SONGS.findIndex(s => s.id === song.id);
+  const nextSongs = [
+    SONGS[(currentIdx + 1) % SONGS.length],
+    SONGS[(currentIdx + 2) % SONGS.length],
+  ];
+  const previousSong = SONGS[(currentIdx - 1 + SONGS.length) % SONGS.length];
+
+  const statusLines = [
+    { dot: "bg-red-500", text: <>Pe Undă · <span className="font-mono text-white/70">{listeners.toLocaleString("ro-RO")}</span></> },
+    { dot: "bg-pink-500", text: <>Vio · <span className="text-pink-300">live</span></> },
+    { dot: "bg-cyan-400", text: <span className="truncate max-w-[160px] inline-block align-middle">Acum · {song.title}</span> },
+  ];
+  const status = statusLines[statusIdx];
 
   return (
-    <div
-      className="absolute inset-0 flex flex-col items-center justify-center px-4 gap-4"
-      style={{ background: "#6B35A8" }}
-    >
-      {/* Live bar at top */}
+    <div className="absolute inset-0 flex flex-col items-center justify-center px-4 gap-4 overflow-hidden">
+
+      {/* Top status bar */}
       <div className="flex items-center justify-between w-full max-w-[340px]">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-aifm animate-breathe" />
-          <span className="text-white/60 text-[11px] font-sans font-medium tracking-wider uppercase">Pe Undă</span>
+        <div key={statusIdx} className="flex items-center gap-2 animate-fade-in">
+          <span className={`w-2 h-2 rounded-full ${status.dot} animate-breathe`} />
+          <span className="text-white/65 text-[11px] font-sans font-medium tracking-wider uppercase">
+            {status.text}
+          </span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan animate-blink" />
-          <span className="text-white/50 text-[11px] font-mono">{listeners.toLocaleString("ro-RO")}</span>
-        </div>
+        <span className="text-white/35 text-[10px] font-mono tracking-wider uppercase">
+          {timeOfDayLabel()}
+        </span>
       </div>
 
-      {/* ── Player card ── */}
-      <div className="w-full max-w-[340px] rounded-[28px] overflow-hidden shadow-2xl" style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+      {/* Player card */}
+      <div className="w-full max-w-[340px] rounded-[28px] overflow-hidden" style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.45)" }}>
 
         {/* Gradient top section */}
         <div
           className="relative"
-          style={{ background: `linear-gradient(160deg, ${song.gradient[0]}, ${song.gradient[1]})` }}
+          style={{ background: `linear-gradient(160deg, ${song.gradient[0]}, ${song.gradient[1]})`, transition: "background 600ms ease" }}
         >
           {/* Card header */}
           <div className="flex items-center justify-between px-5 pt-5 pb-2">
@@ -78,7 +155,7 @@ export default function RadioView({ song, playing, setPlaying, voted, votes, onV
             <span className="text-white font-sans font-semibold text-[15px] tracking-[0.2em]">AIFM</span>
             <button
               onClick={() => setPlaying(!playing)}
-              className="w-8 h-8 flex items-center justify-center text-white/80 active:scale-90 transition-transform"
+              className={`w-8 h-8 flex items-center justify-center text-white/80 active:scale-90 transition-transform ${!playing ? "animate-pulse-soft" : ""}`}
               aria-label={playing ? "Pauză" : "Ascultă"}
             >
               {playing ? (
@@ -97,7 +174,6 @@ export default function RadioView({ song, playing, setPlaying, voted, votes, onV
           {/* Waveform + frequency number */}
           <div className="relative h-[100px] mx-4">
             <Oscilloscope playing={playing} />
-            {/* Prev / number / Next overlay */}
             <div className="absolute inset-0 flex items-center justify-between z-10 px-1">
               <button
                 onClick={onPrev}
@@ -125,6 +201,9 @@ export default function RadioView({ song, playing, setPlaying, voted, votes, onV
           <div className="text-center px-5 pt-4 pb-1">
             <div className="text-white font-sans font-bold text-[22px] leading-tight">{song.title}</div>
             <div className="text-white/60 font-sans text-[13px] mt-1">{song.genre} · {song.duration}</div>
+            <div className="text-white/45 font-sans text-[11px] mt-1.5">
+              Anterior · {previousSong.title} · acum 3 min
+            </div>
           </div>
 
           {/* Action buttons */}
@@ -154,9 +233,8 @@ export default function RadioView({ song, playing, setPlaying, voted, votes, onV
           </div>
         </div>
 
-        {/* ── White frequency section ── */}
-        <div className="bg-white px-5 pt-3 pb-4">
-          {/* Tick marks */}
+        {/* Frequency dial section (paper) */}
+        <div className="px-5 pt-3 pb-4" style={{ background: "#f3eee5" }}>
           <div className="flex items-end gap-[3px] h-7 mb-2">
             {TICK_HEIGHTS.map((h, i) => (
               <div
@@ -166,23 +244,51 @@ export default function RadioView({ song, playing, setPlaying, voted, votes, onV
               />
             ))}
           </div>
-          {/* Track + thumb */}
           <div className="freq-track mb-2">
-            <div className="h-full rounded-full bg-aifm/30" style={{ width: `${scanPct}%` }} />
+            <div className="h-full rounded-full" style={{ width: `${scanPct}%`, background: "rgba(233,30,140,0.4)" }} />
             <div className="freq-thumb" style={{ left: `${scanPct}%` }} />
           </div>
-          {/* Numbers */}
-          <div className="flex justify-between font-sans text-[11px] text-gray-400 mt-1">
+          <div className="flex justify-between font-sans text-[11px] mt-1" style={{ color: "#9b8f7d" }}>
             <span>90</span><span>95</span><span>100</span><span>105</span><span>110</span>
           </div>
         </div>
       </div>
 
-      {/* Vio quote */}
-      <div className="w-full max-w-[340px] text-center px-2">
-        <p key={lineIdx} className="font-serif text-[15px] text-white/55 italic leading-snug animate-fade-in">
+      {/* Up Next */}
+      <div className="w-full max-w-[340px]">
+        <div className="text-[10px] font-mono tracking-widest uppercase text-white/35 mb-1.5 px-1">Urmează</div>
+        <div className="flex flex-col gap-1.5">
+          {nextSongs.map(s => (
+            <div key={s.id} className="flex items-center gap-3 px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: `linear-gradient(135deg, ${s.gradient[0]}, ${s.gradient[1]})` }} />
+              <span className="font-mono text-[11px] text-white/55 shrink-0 w-10">{s.freq}</span>
+              <span className="font-sans text-[12.5px] text-white/85 truncate flex-1">{s.title}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Mood + Vio quote + listeners */}
+      <div className="w-full max-w-[340px] flex flex-col items-center gap-2">
+        <span className="text-[14px] opacity-50 animate-breathe">{moodEmoji()}</span>
+        <p key={lineIdx} className="font-serif text-[15px] text-white/65 italic leading-snug text-center px-2 animate-fade-in">
           &ldquo;{VIO_LINES[lineIdx]}&rdquo;
         </p>
+        <div className="flex items-center gap-1.5 mt-1">
+          <div className="flex -space-x-2">
+            {visibleListeners.map((l, i) => (
+              <div
+                key={`${l.city}-${l.initial}-${i}`}
+                className="w-6 h-6 rounded-full flex items-center justify-center font-sans font-bold text-[10px] text-white animate-fade-in"
+                style={{ background: l.color, boxShadow: "0 0 0 1.5px #1a1820" }}
+                title={`${l.initial} din ${l.city}`}
+              >
+                {l.initial}
+              </div>
+            ))}
+          </div>
+          <span className="text-[10px] font-mono text-white/40 tracking-wider ml-1">+{(listeners - visibleListeners.length).toLocaleString("ro-RO")} în cabină</span>
+        </div>
       </div>
     </div>
   );
