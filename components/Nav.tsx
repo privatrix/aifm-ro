@@ -53,35 +53,33 @@ const TABS: { id: Tab; label: string; icon: (active: boolean) => React.ReactNode
 
 export default function Nav({ active, setActive }: NavProps) {
   return (
-    <nav
-      className="bottom-nav shrink-0 pb-safe"
-      style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
-    >
-      <div className="flex items-center justify-around px-1 pt-1 pb-1">
-        {TABS.map(tab => {
-          const isActive = active === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActive(tab.id)}
-              className="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-150 active:scale-90"
-              style={{
-                color: isActive ? "#E91E8C" : "#bbb",
-                background: isActive ? "#FCE4EC" : "transparent",
-                minWidth: "60px",
-              }}
+    <nav className="bottom-nav shrink-0 flex">
+      {TABS.map(tab => {
+        const isActive = active === tab.id;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => setActive(tab.id)}
+            className="flex-1 flex flex-col items-center gap-1 pt-2 transition-colors duration-150 active:brightness-95"
+            style={{
+              paddingBottom: "max(10px, env(safe-area-inset-bottom))",
+              background: isActive ? "#FCE4EC" : "transparent",
+              color: isActive ? "#E91E8C" : "#bbb",
+              border: "none",
+              cursor: "pointer",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            {tab.icon(isActive)}
+            <span
+              className="font-sans font-medium"
+              style={{ fontSize: "9px", letterSpacing: "0.04em", color: isActive ? "#E91E8C" : "#bbb" }}
             >
-              {tab.icon(isActive)}
-              <span
-                className="font-sans font-medium"
-                style={{ fontSize: "9px", letterSpacing: "0.04em", color: isActive ? "#E91E8C" : "#bbb" }}
-              >
-                {tab.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+              {tab.label}
+            </span>
+          </button>
+        );
+      })}
     </nav>
   );
 }

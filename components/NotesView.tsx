@@ -10,7 +10,7 @@ export default function NotesView({ onNote }: Props) {
   const [tab, setTab] = useState<"citite" | "coada">("citite");
 
   return (
-    <div className="absolute inset-0 flex flex-col" style={{ background: "#3B1A60" }}>
+    <div className="absolute inset-0 flex flex-col" style={{ background: "#6B35A8" }}>
       <div className="white-view">
 
         {/* Header */}

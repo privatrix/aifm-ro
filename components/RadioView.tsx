@@ -40,7 +40,7 @@ export default function RadioView({ song, playing, setPlaying, voted, votes, onV
   return (
     <div
       className="absolute inset-0 flex flex-col items-center justify-center px-4 gap-4"
-      style={{ background: "#3B1A60" }}
+      style={{ background: "#6B35A8" }}
     >
       {/* Live bar at top */}
       <div className="flex items-center justify-between w-full max-w-[340px]">

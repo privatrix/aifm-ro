@@ -6,7 +6,7 @@ const config: Config = {
     extend: {
       colors: {
         // Page background (deep purple like screenshot)
-        void:    "#3B1A60",
+        void:    "#6B35A8",
         surface: "#2D1450",
         // Pink/crimson palette
         aifm:    "#E91E8C",

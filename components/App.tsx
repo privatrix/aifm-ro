@@ -48,7 +48,7 @@ export default function App() {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col" style={{ background: "#3B1A60" }}>
+    <div className="fixed inset-0 flex flex-col" style={{ background: "#6B35A8" }}>
 
       {/* ── Views ── */}
       <div className="flex-1 min-h-0 relative overflow-hidden">
