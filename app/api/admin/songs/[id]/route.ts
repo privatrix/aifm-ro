@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { songs } from "@/db/schema";
 import { SongUpdateSchema } from "@/lib/songs";
 import { deleteObject } from "@/lib/r2";
+import { pickRandomGradient } from "@/lib/palettes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,10 +36,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ ok: false, error: "validation", issues: parsed.error.issues }, { status: 400 });
   }
   const v = parsed.data;
-  if (Object.keys(v).length === 0) {
+  // Translate regenerateGradient flag into actual color values.
+  const { regenerateGradient, ...rest } = v;
+  const updates: Record<string, unknown> = { ...rest };
+  if (regenerateGradient) {
+    const [from, to] = pickRandomGradient();
+    updates.gradientFrom = from;
+    updates.gradientTo = to;
+  }
+  if (Object.keys(updates).length === 0) {
     return NextResponse.json({ ok: false, error: "empty" }, { status: 400 });
   }
-  const [row] = await db.update(songs).set(v).where(eq(songs.id, id)).returning();
+  const [row] = await db.update(songs).set(updates).where(eq(songs.id, id)).returning();
   if (!row) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
   return NextResponse.json({ ok: true, song: row });
 }

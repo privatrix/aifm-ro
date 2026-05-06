@@ -3,6 +3,7 @@ import { desc } from "drizzle-orm";
 import { db } from "@/db";
 import { songs } from "@/db/schema";
 import { SongCreateSchema } from "@/lib/songs";
+import { pickRandomGradient } from "@/lib/palettes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
   }
   const v = parsed.data;
   try {
+    const [from, to] = pickRandomGradient();
     const [row] = await db
       .insert(songs)
       .values({
@@ -33,8 +35,8 @@ export async function POST(req: NextRequest) {
         freq: v.freq,
         bpm: v.bpm ?? 0,
         durationSeconds: v.durationSeconds ?? 0,
-        gradientFrom: v.gradientFrom,
-        gradientTo: v.gradientTo,
+        gradientFrom: from,
+        gradientTo: to,
         pinned: v.pinned ?? false,
         status: v.status ?? "draft",
       })

@@ -114,9 +114,9 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
 
   if (songs.length === 0) {
     return (
-      <div className="border border-dashed border-zinc-800 rounded p-10 text-center">
-        <p className="text-zinc-400 text-sm mb-4">No songs yet.</p>
-        <button onClick={seed} className="bg-zinc-100 text-zinc-900 px-4 py-2 rounded text-sm hover:bg-white">
+      <div className="admin-dropzone text-center">
+        <p className="text-sm mb-4" style={{ color: "rgba(236,231,216,0.7)" }}>No songs yet.</p>
+        <button onClick={seed} className="admin-btn admin-btn-primary">
           Seed sample songs
         </button>
       </div>
@@ -125,11 +125,11 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
 
   return (
     <div>
-      <div className="flex flex-wrap gap-3 mb-4 text-xs">
+      <div className="flex flex-wrap gap-3 mb-4 items-center">
         <select
           value={genreFilter}
           onChange={(e) => setGenreFilter(e.target.value)}
-          className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-zinc-200"
+          className="admin-select !w-auto !py-1.5"
         >
           <option value="">All genres</option>
           {GENRES.map((g) => (
@@ -141,7 +141,7 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-zinc-200"
+          className="admin-select !w-auto !py-1.5"
         >
           <option value="">All statuses</option>
           {STATUSES.map((s) => (
@@ -150,12 +150,12 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
             </option>
           ))}
         </select>
-        <span className="text-zinc-500 self-center">{filtered.length} shown</span>
+        <span className="text-xs mono" style={{ color: "rgba(236,231,216,0.5)" }}>{filtered.length} shown</span>
       </div>
 
-      <div className="overflow-x-auto border border-zinc-800 rounded">
-        <table className="w-full text-xs">
-          <thead className="bg-zinc-900 text-zinc-400">
+      <div className="overflow-x-auto admin-card">
+        <table className="admin-table">
+          <thead>
             <tr>
               <Th onClick={() => toggleSort("id")} active={sortKey === "id"} dir={sortDir}>ID</Th>
               <Th onClick={() => toggleSort("title")} active={sortKey === "title"} dir={sortDir}>Title</Th>
@@ -170,9 +170,9 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
           </thead>
           <tbody>
             {filtered.map((s) => (
-              <tr key={s.id} className="border-t border-zinc-800 hover:bg-zinc-900/50">
-                <td className="px-3 py-2 text-zinc-500">{s.id}</td>
-                <td className="px-3 py-2 text-zinc-100">
+              <tr key={s.id}>
+                <td style={{ color: "rgba(236,231,216,0.45)" }}>{s.id}</td>
+                <td style={{ color: "#f5efe2" }}>
                   <span
                     className="inline-block w-2 h-2 rounded-full mr-2 align-middle"
                     style={{ background: `linear-gradient(135deg, ${s.gradientFrom}, ${s.gradientTo})` }}
@@ -181,41 +181,38 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
                     <button
                       onClick={() => togglePlay(s)}
                       title={playingId === s.id ? "Pause" : "Play"}
-                      className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-zinc-700 text-[10px] mr-2 align-middle hover:border-zinc-400 hover:text-white"
+                      className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] mr-2 align-middle"
+                      style={{ border: "1px solid rgba(255,255,255,0.15)", color: playingId === s.id ? "#E91E8C" : "rgba(236,231,216,0.65)" }}
                     >
                       {playingId === s.id ? "■" : "▶"}
                     </button>
                   ) : (
-                    <span className="inline-block w-5 h-5 mr-2 align-middle text-[10px] text-zinc-700 text-center">—</span>
+                    <span className="inline-block w-5 h-5 mr-2 align-middle text-[10px] text-center" style={{ color: "rgba(236,231,216,0.25)" }}>—</span>
                   )}
                   {s.title}
                 </td>
-                <td className="px-3 py-2">{s.genre}</td>
-                <td className="px-3 py-2">{s.freq}</td>
-                <td className="px-3 py-2">{s.votes}</td>
-                <td className="px-3 py-2">
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider ${
-                      s.status === "active"
-                        ? "bg-emerald-900/40 text-emerald-300"
-                        : s.status === "archived"
-                        ? "bg-zinc-800 text-zinc-500"
-                        : "bg-amber-900/40 text-amber-300"
-                    }`}
-                  >
+                <td>{s.genre}</td>
+                <td className="mono">{s.freq}</td>
+                <td>{s.votes}</td>
+                <td>
+                  <span className={
+                    s.status === "active" ? "admin-pill admin-pill-active" :
+                    s.status === "archived" ? "admin-pill admin-pill-archived" :
+                    "admin-pill admin-pill-draft"
+                  }>
                     {s.status}
                   </span>
                 </td>
-                <td className="px-3 py-2">{s.pinned ? "📌" : ""}</td>
-                <td className="px-3 py-2">{s.playedCount}</td>
-                <td className="px-3 py-2 text-right space-x-2 whitespace-nowrap">
-                  <Link href={`/admin/songs/${s.id}/edit`} className="text-zinc-300 hover:text-white underline-offset-2 hover:underline">
+                <td>{s.pinned ? "📌" : ""}</td>
+                <td>{s.playedCount}</td>
+                <td className="text-right space-x-3 whitespace-nowrap">
+                  <Link href={`/admin/songs/${s.id}/edit`} className="admin-link">
                     Edit
                   </Link>
                   <button
                     disabled={busy === s.id}
                     onClick={() => patch(s.id, { pinned: !s.pinned })}
-                    className="text-zinc-400 hover:text-white"
+                    style={{ color: "rgba(236,231,216,0.7)" }}
                   >
                     {s.pinned ? "Unpin" : "Pin"}
                   </button>
@@ -223,7 +220,7 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
                     <button
                       disabled={busy === s.id}
                       onClick={() => patch(s.id, { status: "draft" })}
-                      className="text-zinc-400 hover:text-white"
+                      style={{ color: "rgba(236,231,216,0.7)" }}
                     >
                       Restore
                     </button>
@@ -231,7 +228,7 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
                     <button
                       disabled={busy === s.id}
                       onClick={() => archive(s.id)}
-                      className="text-red-400 hover:text-red-300"
+                      style={{ color: "#ff7370" }}
                     >
                       Archive
                     </button>
@@ -240,7 +237,7 @@ export default function SongsTable({ initialSongs }: { initialSongs: Song[] }) {
                     <button
                       disabled={busy === s.id}
                       onClick={() => hardDelete(s.id)}
-                      className="text-red-500 hover:text-red-400"
+                      style={{ color: "#ff5050" }}
                       title="Permanently delete (incl. R2 file)"
                     >
                       Delete
@@ -278,8 +275,8 @@ function Th({
   dir: "asc" | "desc";
 }) {
   return (
-    <th className="px-3 py-2 text-left">
-      <button onClick={onClick} className={`inline-flex items-center gap-1 ${active ? "text-zinc-100" : ""}`}>
+    <th>
+      <button onClick={onClick} className="inline-flex items-center gap-1" style={{ color: active ? "#ffb1cc" : undefined }}>
         {children}
         {active && <span>{dir === "asc" ? "↑" : "↓"}</span>}
       </button>

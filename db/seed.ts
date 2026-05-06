@@ -2,10 +2,15 @@ import { sql } from "drizzle-orm";
 import { db } from "./index";
 import { songs } from "./schema";
 import { SONGS } from "@/lib/data";
+import { GENRE_MIGRATION_MAP, type Genre } from "@/lib/palettes";
 
 function durationToSeconds(d: string): number {
   const [m, s] = d.split(":").map(Number);
   return (m || 0) * 60 + (s || 0);
+}
+
+function mapGenre(g: string): Genre {
+  return GENRE_MIGRATION_MAP[g] ?? "Ambient";
 }
 
 /** Idempotent: only seeds if `aifm.songs` is empty. */
@@ -15,7 +20,7 @@ export async function seedSongsIfEmpty(): Promise<{ inserted: number; skipped: b
 
   const rows = SONGS.map((s) => ({
     title: s.title,
-    genre: s.genre,
+    genre: mapGenre(s.genre),
     freq: s.freq,
     bpm: s.bpm,
     durationSeconds: durationToSeconds(s.duration),

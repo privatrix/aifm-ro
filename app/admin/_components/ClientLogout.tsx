@@ -15,9 +15,10 @@ export default function ClientLogout({ compact }: { compact?: boolean }) {
     <button
       onClick={logout}
       disabled={busy}
-      className={`text-xs uppercase tracking-widest text-zinc-400 hover:text-zinc-100 ${compact ? "" : "w-full text-left"}`}
+      className={`mono text-[10px] uppercase tracking-widest transition-colors ${compact ? "" : "w-full text-left"}`}
+      style={{ color: "rgba(244,143,177,0.7)" }}
     >
-      {busy ? "..." : "Logout"}
+      {busy ? "..." : "↪ Logout"}
     </button>
   );
 }

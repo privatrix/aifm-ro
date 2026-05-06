@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { songs } from "@/db/schema";
 import SongForm from "../../_components/SongForm";
 import SongFileUploader from "../../_components/SongFileUploader";
-import type { Genre } from "@/lib/data";
+import type { Genre } from "@/lib/palettes";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +17,8 @@ export default async function EditSongPage({ params }: { params: { id: string } 
   return (
     <div>
       <div className="flex items-baseline justify-between mb-6">
-        <h1 className="text-xl text-zinc-100">Edit: {row.title}</h1>
-        <span className="text-xs text-zinc-500">id #{row.id}</span>
+        <h1 className="text-2xl font-serif">Edit: {row.title}</h1>
+        <span className="text-xs mono" style={{ color: "rgba(236,231,216,0.5)" }}>id #{row.id}</span>
       </div>
       <div className="mb-6">
         <SongFileUploader
@@ -37,10 +37,10 @@ export default async function EditSongPage({ params }: { params: { id: string } 
           freq: row.freq,
           bpm: row.bpm,
           durationSeconds: row.durationSeconds,
-          gradientFrom: row.gradientFrom,
-          gradientTo: row.gradientTo,
           pinned: row.pinned,
           status: row.status,
+          gradientFrom: row.gradientFrom,
+          gradientTo: row.gradientTo,
         }}
       />
     </div>

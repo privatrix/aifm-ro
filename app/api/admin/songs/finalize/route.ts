@@ -6,21 +6,10 @@ import { db } from "@/db";
 import { songs } from "@/db/schema";
 import { getObjectBytes, publicUrl } from "@/lib/r2";
 import { pickFreeFreq } from "@/lib/songs";
+import { pickRandomGradient } from "@/lib/palettes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-// Default gradient palette (cycled when creating new songs without one).
-const DEFAULT_GRADIENTS: Array<[string, string]> = [
-  ["#E91E8C", "#C2185B"],
-  ["#8E24AA", "#6A1B9A"],
-  ["#1565C0", "#0D47A1"],
-  ["#7B1FA2", "#4A148C"],
-  ["#E53935", "#C62828"],
-  ["#F57C00", "#E64A19"],
-  ["#AD1457", "#880E4F"],
-  ["#00695C", "#006064"],
-];
 
 const Body = z.object({
   id: z.number().int().positive().optional(),
@@ -83,7 +72,7 @@ export async function POST(req: NextRequest) {
   if (!freq) {
     return NextResponse.json({ ok: false, error: "no free FM slot left" }, { status: 409 });
   }
-  const [from, to] = DEFAULT_GRADIENTS[all.length % DEFAULT_GRADIENTS.length];
+  const [from, to] = pickRandomGradient();
   try {
     const [row] = await db
       .insert(songs)

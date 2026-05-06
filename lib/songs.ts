@@ -1,40 +1,26 @@
 import { z } from "zod";
+import { GENRES as PALETTE_GENRES } from "./palettes";
 
-export const GENRES = [
-  "Ambient",
-  "Lo-fi",
-  "Electronic",
-  "Jazz",
-  "Indie",
-  "Synthwave",
-  "Pop",
-  "Folk",
-] as const;
+export const GENRES = PALETTE_GENRES;
 
 export const STATUSES = ["draft", "active", "archived"] as const;
 
 export const SongCreateSchema = z.object({
   title: z.string().trim().min(1).max(200),
-  genre: z.enum(GENRES),
+  genre: z.enum(GENRES as unknown as [string, ...string[]]),
   freq: z
     .string()
     .trim()
     .regex(/^\d{2,3}(\.\d)?$/, "freq like 88.3"),
   bpm: z.number().int().min(0).max(400),
   durationSeconds: z.number().int().min(0).max(60 * 60 * 4),
-  gradientFrom: z
-    .string()
-    .trim()
-    .regex(/^#[0-9a-fA-F]{6}$/),
-  gradientTo: z
-    .string()
-    .trim()
-    .regex(/^#[0-9a-fA-F]{6}$/),
   pinned: z.boolean(),
   status: z.enum(STATUSES),
 });
 
-export const SongUpdateSchema = SongCreateSchema.partial();
+export const SongUpdateSchema = SongCreateSchema.partial().extend({
+  regenerateGradient: z.boolean().optional(),
+});
 
 export type SongCreateInput = z.infer<typeof SongCreateSchema>;
 export type SongUpdateInput = z.infer<typeof SongUpdateSchema>;

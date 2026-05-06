@@ -37,27 +37,31 @@ function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 border border-zinc-800 bg-zinc-900 p-8 rounded-md">
-      <div>
-        <div className="text-xs uppercase tracking-widest text-zinc-500">AI FM</div>
-        <h1 className="text-xl mt-1">Admin login</h1>
+    <form onSubmit={onSubmit} className="w-full max-w-sm space-y-5 admin-card p-8">
+      <div className="text-center">
+        <div
+          className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center font-serif text-[26px] text-white"
+          style={{ background: "linear-gradient(135deg, #E91E8C, #C2185B)" }}
+        >
+          V
+        </div>
+        <div className="mono text-[10px] uppercase tracking-widest mt-3" style={{ color: "rgba(236,231,216,0.5)" }}>
+          AI FM · Control Room
+        </div>
+        <h1 className="font-serif text-2xl mt-1" style={{ color: "#f5efe2" }}>Admin login</h1>
       </div>
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">Password</label>
+        <label className="admin-label">Password</label>
         <input
           type="password"
           autoFocus
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-zinc-950 border border-zinc-700 px-3 py-2 rounded text-sm focus:outline-none focus:border-zinc-400"
+          className="admin-input"
         />
       </div>
-      {err && <div className="text-sm text-red-400">{err}</div>}
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-zinc-100 text-zinc-900 py-2 rounded text-sm font-medium hover:bg-white disabled:opacity-50"
-      >
+      {err && <div className="text-sm" style={{ color: "#ff7370" }}>{err}</div>}
+      <button type="submit" disabled={loading} className="admin-btn admin-btn-primary w-full">
         {loading ? "..." : "Sign in"}
       </button>
     </form>
@@ -66,7 +70,7 @@ function LoginForm() {
 
 export default function AdminLogin() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-100 font-mono p-6">
+    <div className="min-h-screen flex items-center justify-center p-6">
       <Suspense fallback={null}>
         <LoginForm />
       </Suspense>

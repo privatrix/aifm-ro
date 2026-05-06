@@ -21,7 +21,12 @@ export default function AdminNav({ variant }: { variant: "sidebar" | "bottom" })
             <li key={it.href}>
               <Link
                 href={it.href}
-                className={`block text-center text-[11px] uppercase tracking-wider py-3 ${active ? "text-zinc-100 bg-zinc-800" : "text-zinc-400"}`}
+                aria-current={active ? "page" : undefined}
+                className="block text-center text-[10px] uppercase tracking-widest py-3"
+                style={{
+                  color: active ? "#ffb1cc" : "rgba(236,231,216,0.55)",
+                  background: active ? "rgba(233,30,140,0.10)" : "transparent",
+                }}
               >
                 {it.label}
               </Link>
@@ -32,14 +37,15 @@ export default function AdminNav({ variant }: { variant: "sidebar" | "bottom" })
     );
   }
   return (
-    <ul className="flex-1 py-2">
+    <ul className="flex-1 py-3 px-2 space-y-1">
       {ITEMS.map((it) => {
         const active = pathname?.startsWith(it.href);
         return (
           <li key={it.href}>
             <Link
               href={it.href}
-              className={`block px-5 py-2 text-sm border-l-2 ${active ? "border-zinc-100 bg-zinc-800/60 text-zinc-100" : "border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"}`}
+              aria-current={active ? "page" : undefined}
+              className="admin-nav-item"
             >
               {it.label}
             </Link>
