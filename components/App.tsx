@@ -10,7 +10,7 @@ import NotesView from "./NotesView";
 type Tab = "radio" | "biblioteca" | "top" | "bilete";
 
 export default function App() {
-  const [tab, setSongTab]       = useState<Tab>("radio");
+  const [tab, setTab]           = useState<Tab>("radio");
   const [playing, setPlaying]   = useState(true);
   const [songIdx, setSongIdx]   = useState(0);
   const [showNote, setShowNote] = useState(false);
@@ -36,7 +36,7 @@ export default function App() {
 
   const prevSong = () => setSongIdx(i => (i - 1 + SONGS.length) % SONGS.length);
   const nextSong = () => setSongIdx(i => (i + 1) % SONGS.length);
-  const playSong = (idx: number) => { setSongIdx(idx); setSongTab("radio"); };
+  const playSong = (idx: number) => { setSongIdx(idx); setTab("radio"); };
 
   const submitNote = () => {
     if (!noteText.trim()) return;
@@ -48,7 +48,8 @@ export default function App() {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col" style={{ background: "#0d0620" }}>
+    <div className="fixed inset-0 flex flex-col" style={{ background: "#3B1A60" }}>
+
       {/* ── Views ── */}
       <div className="flex-1 min-h-0 relative overflow-hidden">
         {tab === "radio" && (
@@ -62,6 +63,7 @@ export default function App() {
             onPrev={prevSong}
             onNext={nextSong}
             onNote={() => setShowNote(true)}
+            onOpenLibrary={() => setTab("biblioteca")}
           />
         )}
         {tab === "biblioteca" && (
@@ -72,6 +74,7 @@ export default function App() {
             onVote={toggleVote}
             currentSong={currentSong}
             onPlay={playSong}
+            onBack={() => setTab("radio")}
           />
         )}
         {tab === "top" && (
@@ -90,37 +93,40 @@ export default function App() {
       </div>
 
       {/* ── Navigation ── */}
-      <Nav active={tab} setActive={setSongTab} />
+      <Nav active={tab} setActive={setTab} />
 
-      {/* ── Note modal ── */}
+      {/* ── Note modal (white bottom sheet) ── */}
       {showNote && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-end"
           onClick={() => !noteSent && setShowNote(false)}
         >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="absolute inset-0" style={{ background: "rgba(30,10,60,0.7)", backdropFilter: "blur(6px)" }} />
           <div
-            className="note-modal relative w-full max-w-md rounded-3xl p-6 animate-slide-up"
+            className="modal-sheet w-full animate-slide-up relative"
             onClick={e => e.stopPropagation()}
           >
             {!noteSent ? (
               <>
-                {/* Vio avatar */}
+                {/* Handle bar */}
+                <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5" />
+
+                {/* Header */}
                 <div className="flex items-center gap-3 mb-5">
                   <div
-                    className="w-10 h-10 rounded-2xl flex items-center justify-center font-serif text-xl text-white"
-                    style={{ background: "linear-gradient(135deg, #E91E8C, #9C1458)" }}
+                    className="w-11 h-11 rounded-2xl flex items-center justify-center font-serif text-[20px] text-white shrink-0"
+                    style={{ background: "linear-gradient(135deg, #E91E8C, #C2185B)" }}
                   >
                     V
                   </div>
                   <div>
-                    <div className="font-serif text-lg text-white">Pasează un bilet</div>
-                    <div className="font-mono text-[10px] text-muted tracking-wider">VIO ASCULTĂ</div>
+                    <div className="font-sans font-bold text-[16px] text-ink">Pasează un bilet lui Vio</div>
+                    <div className="font-sans text-[11px] text-gray-400 mt-0.5">poate fi citit live pe undă</div>
                   </div>
                 </div>
 
                 <textarea
-                  className="note-input mb-1"
+                  className="note-textarea mb-2"
                   rows={4}
                   maxLength={240}
                   placeholder="o cerere, o gândire, o noapte albă..."
@@ -128,39 +134,38 @@ export default function App() {
                   onChange={e => setNoteText(e.target.value)}
                   autoFocus
                 />
-                <div className="flex items-center justify-between mb-4">
-                  <span className="font-mono text-[10px] text-dim">{noteText.length}/240</span>
-                  <span className="font-mono text-[9px] text-dim">poate fi citit live pe undă</span>
+                <div className="flex justify-between mb-5">
+                  <span className="font-sans text-[12px] text-gray-400">{noteText.length}/240</span>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <button
                     onClick={() => setShowNote(false)}
-                    className="flex-1 h-11 rounded-2xl font-sans text-sm text-white/60 transition-colors"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    className="flex-1 h-12 rounded-2xl font-sans text-[14px] font-medium text-gray-500"
+                    style={{ background: "#f5f5f5" }}
                   >
                     Renunță
                   </button>
                   <button
                     onClick={submitNote}
                     disabled={!noteText.trim()}
-                    className="flex-1 h-11 rounded-2xl font-sans text-sm text-white font-medium transition-all active:scale-97 disabled:opacity-40"
-                    style={{ background: "linear-gradient(135deg, #E91E8C, #9C1458)" }}
+                    className="flex-1 h-12 rounded-2xl font-sans text-[14px] font-semibold text-white active:scale-97 transition-transform disabled:opacity-40"
+                    style={{ background: "linear-gradient(135deg, #E91E8C, #C2185B)" }}
                   >
                     Trimite
                   </button>
                 </div>
               </>
             ) : (
-              <div className="text-center py-6 animate-fade-in">
+              <div className="text-center py-8 animate-fade-in">
                 <div
-                  className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center font-serif text-2xl text-white"
-                  style={{ background: "linear-gradient(135deg, #E91E8C, #9C1458)" }}
+                  className="w-16 h-16 rounded-3xl mx-auto mb-4 flex items-center justify-center font-serif text-[28px] text-white"
+                  style={{ background: "linear-gradient(135deg, #E91E8C, #C2185B)" }}
                 >
                   V
                 </div>
-                <div className="font-serif text-2xl text-white mb-1">Vio l-a primit.</div>
-                <div className="font-mono text-[11px] text-muted">Ascultă unda. Poate te strigă.</div>
+                <div className="font-sans font-bold text-[20px] text-ink mb-1">Vio l-a primit.</div>
+                <div className="font-sans text-[13px] text-gray-400">Ascultă unda. Poate te strigă.</div>
               </div>
             )}
           </div>

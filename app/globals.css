@@ -2,186 +2,160 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
-
-html, body { height: 100%; width: 100%; }
+:root { color-scheme: light dark; }
+html, body { height: 100%; }
 body {
   font-family: var(--font-sans);
-  background: #0d0620;
+  background: #3B1A60;
   position: fixed; inset: 0;
   overflow: hidden;
 }
 
-/* ── Pink lamp glow ── */
-.lamp {
-  position: absolute; inset: 0;
-  background:
-    radial-gradient(60% 50% at 50% 18%, rgba(233,30,140,0.22), rgba(194,24,91,0.06) 45%, transparent 75%),
-    radial-gradient(40% 35% at 50% 12%, rgba(255,64,129,0.13), transparent 70%);
-  pointer-events: none;
-  mix-blend-mode: screen;
-  transition: opacity .8s ease;
-}
-
-/* ── Film grain ── */
-.grain::before {
-  content: "";
-  position: absolute; inset: 0;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  mix-blend-mode: overlay;
-  pointer-events: none;
-  opacity: 0.45;
-}
-
-/* ── Vignette ── */
-.vignette::after {
-  content: "";
-  position: absolute; inset: 0;
-  background: radial-gradient(120% 90% at 50% 50%, transparent 50%, rgba(0,0,0,0.65) 100%);
-  pointer-events: none;
-}
-
-/* ── Scanlines ── */
-.scanline {
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255,255,255,0.015) 0px,
-    rgba(255,255,255,0.015) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-}
-
-/* ── Mono label / tag ── */
-.tag {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-/* ── Dock buttons (main controls below card) ── */
-.dock-btn {
-  height: 44px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  color: #fff;
-  padding: 0 16px;
-  cursor: pointer;
-  transition: background .15s ease, border-color .15s ease, transform .1s ease;
-}
-.dock-btn:hover  { background: rgba(233,30,140,0.12); border-color: rgba(233,30,140,0.3); }
-.dock-btn:active { transform: scale(0.96); }
-.dock-btn[data-active="true"] {
-  background: rgba(233,30,140,0.2);
-  border-color: rgba(233,30,140,0.6);
-  color: #FF4081;
-}
-
-.dock-primary {
-  width: 56px; height: 56px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 18px;
-  background: linear-gradient(160deg, #E91E8C, #9C1458);
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 4px 24px rgba(233,30,140,0.45);
-  transition: box-shadow .15s ease, transform .1s ease;
-}
-.dock-primary:hover  { box-shadow: 0 4px 36px rgba(233,30,140,0.65); }
-.dock-primary:active { transform: scale(0.96); }
-
-/* ── Inside-card action buttons ── */
-.card-btn {
-  width: 40px; height: 40px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.22);
-  border: 1px solid rgba(255,255,255,0.18);
-  cursor: pointer;
-  transition: background .12s ease, transform .1s ease;
-}
-.card-btn:hover  { background: rgba(0,0,0,0.35); }
-.card-btn:active { transform: scale(0.93); }
-.card-btn[data-active="true"] { background: rgba(255,255,255,0.28); }
-
-/* ── Note modal ── */
-.note-modal {
-  background: rgba(22,10,48,0.96);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(233,30,140,0.28);
-}
-.note-input {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: #fff;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  width: 100%;
-  outline: none;
-  resize: none;
-  transition: border-color .15s ease;
-}
-.note-input:focus { border-color: rgba(233,30,140,0.55); }
-
-/* ── Scrollable view container ── */
+/* ── Scrollable view ── */
 .view-scroll {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
 }
-.view-scroll::-webkit-scrollbar { width: 3px; }
-.view-scroll::-webkit-scrollbar-track { background: transparent; }
-.view-scroll::-webkit-scrollbar-thumb { background: rgba(233,30,140,0.3); border-radius: 2px; }
+.view-scroll::-webkit-scrollbar { display: none; }
 
-/* ── Song card (library) ── */
-.song-card {
-  border-radius: 22px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform .15s ease, box-shadow .15s ease;
+/* ── Equalizer bar ── */
+.eq-bar {
+  flex: 1;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.9);
+  min-height: 4px;
 }
-.song-card:hover  { transform: translateY(-2px); box-shadow: 0 10px 36px rgba(0,0,0,0.5); }
-.song-card:active { transform: scale(0.97); }
 
-/* ── Genre pill ── */
-.genre-pill {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 3px 9px;
+/* ── Card action button (inside gradient card) ── */
+.card-action {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.18);
+  border: none;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.card-action:active { transform: scale(0.91); background: rgba(0,0,0,0.3); }
+.card-action[data-active="true"] { background: rgba(255,255,255,0.25); }
+
+/* ── Frequency slider (white section) ── */
+.freq-track {
+  position: relative;
+  height: 2px;
+  background: #e0e0e0;
+  border-radius: 2px;
+}
+.freq-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #1a1a2e;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+  cursor: pointer;
+}
+
+/* ── White card views (Library, Top, Notes) ── */
+.white-view {
+  background: #ffffff;
+  border-radius: 28px 28px 0 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.white-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+/* ── Station row (library list) ── */
+.station-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 20px;
+  height: 58px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter 0.1s;
+  flex-shrink: 0;
+}
+.station-row:active { filter: brightness(0.92); }
+
+.station-row-expanded {
+  padding: 16px 20px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+/* ── Nav (white bottom bar) ── */
+.bottom-nav {
+  background: #ffffff;
+  border-top: 1px solid #f0f0f0;
+  box-shadow: 0 -2px 16px rgba(0,0,0,0.08);
+}
+
+/* ── Note/send modal (white bottom sheet) ── */
+.modal-sheet {
+  background: #ffffff;
+  border-radius: 24px 24px 0 0;
+  padding: 20px 20px;
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+}
+.note-textarea {
+  background: #f7f7f7;
+  border: 1.5px solid #ebebeb;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 15px;
+  font-family: var(--font-sans);
+  width: 100%;
+  outline: none;
+  resize: none;
+  color: #1a1a2e;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+.note-textarea:focus { border-color: #E91E8C; }
+
+/* ── Pill button ── */
+.pill-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 36px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.15);
-  color: rgba(255,255,255,0.85);
-}
-
-/* ── Top-chart row ── */
-.rank-row {
-  display: flex; align-items: center; gap: 14px;
-  padding: 14px 20px;
+  padding: 0 16px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  transition: background .12s ease;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.12s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
 }
-.rank-row:hover  { background: rgba(255,255,255,0.03); }
-.rank-row:active { background: rgba(255,255,255,0.06); }
-
-/* ── Note message card ── */
-.note-card {
-  border-radius: 16px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
-  padding: 16px;
+.pill-btn:active { transform: scale(0.96); }
+.pill-active {
+  background: linear-gradient(135deg, #E91E8C, #C2185B);
+  color: #fff;
+  border: none;
+}
+.pill-inactive {
+  background: #f5f5f5;
+  color: #888;
+  border: none;
 }
 
-/* ── iOS / Android safe-area ── */
+/* ── Rank badge ── */
+.rank-gold   { color: #F59E0B; }
+.rank-silver { color: #9CA3AF; }
+.rank-bronze { color: #D97706; }
+
+/* ── iOS safe area ── */
 .pt-safe { padding-top: max(1rem, env(safe-area-inset-top)); }
-.pb-safe { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
+.pb-safe { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }

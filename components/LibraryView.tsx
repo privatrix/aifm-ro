@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Song, Genre } from "@/lib/data";
+import { Song } from "@/lib/data";
 
 interface Props {
   songs: Song[];
@@ -9,146 +9,151 @@ interface Props {
   onVote: (id: number) => void;
   currentSong: Song;
   onPlay: (idx: number) => void;
+  onBack: () => void;
 }
 
-const GENRES: (Genre | "Toate")[] = ["Toate", "Ambient", "Lo-fi", "Electronic", "Jazz", "Indie", "Synthwave", "Pop", "Folk"];
+export default function LibraryView({ songs, voted, votes, onVote, currentSong, onPlay, onBack }: Props) {
+  const [expanded, setExpanded] = useState<number | null>(currentSong.id);
+  const [query, setQuery]       = useState("");
 
-export default function LibraryView({ songs, voted, votes, onVote, currentSong, onPlay }: Props) {
-  const [filter, setFilter]       = useState<Genre | "Toate">("Toate");
-  const [query, setQuery]         = useState("");
-  const [expanded, setExpanded]   = useState<number | null>(null);
-
-  const visible = songs.filter(s => {
-    const matchGenre = filter === "Toate" || s.genre === filter;
-    const matchQuery = s.title.toLowerCase().includes(query.toLowerCase()) || s.genre.toLowerCase().includes(query.toLowerCase());
-    return matchGenre && matchQuery;
-  });
+  const visible = songs.filter(s =>
+    s.title.toLowerCase().includes(query.toLowerCase()) ||
+    s.genre.toLowerCase().includes(query.toLowerCase())
+  );
 
   return (
-    <div className="absolute inset-0 flex flex-col">
-      {/* Header */}
-      <div className="view-header">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="font-serif text-[22px] text-white">Bibliotecă</h1>
-          <span className="tag text-muted">{songs.length} piese</span>
-        </div>
-        {/* Search */}
-        <div className="relative mb-3">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
-          <input
-            type="search"
-            placeholder="Caută piese..."
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl font-mono text-sm text-white placeholder-white/30 outline-none"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-          />
-        </div>
-        {/* Genre filter */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none" style={{ scrollbarWidth: "none" }}>
-          {GENRES.map(g => (
-            <button
-              key={g}
-              onClick={() => setFilter(g)}
-              className="shrink-0 font-mono text-[10px] tracking-wider uppercase px-3 py-1.5 rounded-full transition-all duration-150"
-              style={{
-                background: filter === g ? "linear-gradient(135deg, #E91E8C, #9C1458)" : "rgba(255,255,255,0.06)",
-                color: filter === g ? "#fff" : "rgba(255,255,255,0.5)",
-                border: filter === g ? "none" : "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="absolute inset-0 flex flex-col" style={{ background: "#3B1A60" }}>
+      <div className="white-view">
 
-      {/* Song grid */}
-      <div className="view-scroll px-4 pt-4 pb-4">
-        {visible.length === 0 && (
-          <div className="text-center py-16 text-muted font-mono text-sm">Nicio piesă găsită.</div>
-        )}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {visible.map((song, i) => {
-            const isExpanded = expanded === song.id;
-            const isPlaying  = currentSong.id === song.id;
+        {/* Header */}
+        <div className="white-header">
+          <div className="flex items-center gap-3 mb-3">
+            <button
+              onClick={onBack}
+              className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+              style={{ background: "#f5f5f5" }}
+              aria-label="Înapoi"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M19 12H5M12 5l-7 7 7 7"/>
+              </svg>
+            </button>
+            <h1 className="font-sans font-bold text-[20px] text-ink flex-1">Bibliotecă</h1>
+            <span className="font-sans text-[12px] text-gray-400">{songs.length} piese</span>
+          </div>
+          {/* Search */}
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              type="search"
+              placeholder="Caută piese sau gen..."
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 rounded-2xl font-sans text-[14px] text-ink placeholder-gray-400 outline-none"
+              style={{ background: "#f5f5f5", border: "none" }}
+            />
+          </div>
+        </div>
+
+        {/* Station list */}
+        <div className="view-scroll">
+          {visible.length === 0 && (
+            <div className="text-center py-16 text-gray-400 font-sans text-[14px]">Nicio piesă găsită.</div>
+          )}
+
+          {visible.map((song, visIdx) => {
+            const globalIdx = songs.findIndex(s => s.id === song.id);
+            const isExp     = expanded === song.id;
+            const isPlaying = currentSong.id === song.id;
+
+            if (isExp) {
+              return (
+                <div
+                  key={song.id}
+                  className="station-row-expanded"
+                  style={{ background: `linear-gradient(135deg, ${song.gradient[0]}, ${song.gradient[1]})` }}
+                  onClick={() => setExpanded(null)}
+                >
+                  <div className="flex items-start justify-between">
+                    <button
+                      onClick={e => { e.stopPropagation(); onVote(song.id); }}
+                      className="mt-1 active:scale-90 transition-transform"
+                      aria-label="Votează"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill={voted.has(song.id) ? "white" : "none"} stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+                      </svg>
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); setExpanded(null); }}
+                      className="text-white/60 active:scale-90 transition-transform"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M6 6l12 12M18 6L6 18"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="mt-2">
+                    <div className="font-sans font-bold text-white" style={{ fontSize: "clamp(36px,10vw,44px)", lineHeight: 1 }}>{song.freq}</div>
+                    <div className="font-sans font-bold text-white text-[19px] mt-1">{song.title}</div>
+                    <div className="font-sans text-white/60 text-[13px] mt-0.5">
+                      {song.genre} · {song.duration} · {votes[song.id]} voturi
+                    </div>
+                  </div>
+                  {/* Actions */}
+                  <div className="flex gap-2 mt-4" onClick={e => e.stopPropagation()}>
+                    <button
+                      onClick={() => { onPlay(globalIdx); }}
+                      className="flex items-center gap-1.5 px-4 h-9 rounded-full bg-white font-sans text-[13px] font-semibold active:scale-95 transition-transform"
+                      style={{ color: song.gradient[0] }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                      Ascultă
+                    </button>
+                    <button className="flex items-center gap-1.5 px-4 h-9 rounded-full bg-white/20 font-sans text-[13px] text-white font-medium active:scale-95 transition-transform">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+                      Descarcă
+                    </button>
+                    <button className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center active:scale-95 transition-transform">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div
                 key={song.id}
-                className="song-card"
-                onClick={() => setExpanded(isExpanded ? null : song.id)}
+                className="station-row"
+                style={{ background: `${song.gradient[0]}` }}
+                onClick={() => setExpanded(song.id)}
               >
-                {/* Gradient face */}
-                <div
-                  className="relative aspect-square flex flex-col justify-between p-3"
-                  style={{ background: `linear-gradient(150deg, ${song.gradient[0]}, ${song.gradient[1]})` }}
+                <button
+                  onClick={e => { e.stopPropagation(); onVote(song.id); }}
+                  className="shrink-0 active:scale-90 transition-transform"
+                  aria-label="Votează"
                 >
-                  {/* Playing indicator */}
-                  {isPlaying && (
-                    <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-white/25 flex items-center justify-center">
-                      <span className="block w-1.5 h-1.5 rounded-full bg-white animate-breathe" />
-                    </div>
-                  )}
-                  <span className="font-mono text-[9px] text-white/50 tracking-wider">#{String(song.id).padStart(2, "0")}</span>
-                  <div>
-                    <div className="genre-pill mb-1">{song.genre}</div>
-                    <div className="font-serif text-[13px] text-white leading-tight">{song.title}</div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill={voted.has(song.id) ? "white" : "none"} stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+                  </svg>
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    {isPlaying && <span className="w-1.5 h-1.5 rounded-full bg-white animate-breathe shrink-0" />}
+                    <span className="font-sans font-semibold text-white text-[15px] truncate">{song.title}</span>
                   </div>
                 </div>
-
-                {/* Info strip */}
-                <div
-                  className="px-3 py-2 flex items-center justify-between"
-                  style={{ background: "rgba(255,255,255,0.04)" }}
-                >
-                  <span className="font-mono text-[10px] text-muted">{song.duration}</span>
-                  <button
-                    onClick={e => { e.stopPropagation(); onVote(song.id); }}
-                    className="flex items-center gap-1 transition-colors duration-100"
-                    style={{ color: voted.has(song.id) ? "#FF4081" : "rgba(255,255,255,0.4)" }}
-                    aria-label="Votează"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill={voted.has(song.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
-                    </svg>
-                    <span className="font-mono text-[10px]">{votes[song.id]}</span>
-                  </button>
-                </div>
-
-                {/* Expanded actions */}
-                {isExpanded && (
-                  <div
-                    className="border-t animate-slide-up"
-                    style={{ borderColor: "rgba(255,255,255,0.07)", background: "rgba(0,0,0,0.35)" }}
-                  >
-                    <button
-                      onClick={e => { e.stopPropagation(); onPlay(i); }}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 font-sans text-[13px] text-white hover:bg-white/5 transition-colors"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                      Ascultă
-                    </button>
-                    <button
-                      className="w-full flex items-center gap-2 px-3 py-2.5 font-sans text-[13px] text-white/70 hover:bg-white/5 transition-colors"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
-                      Descarcă
-                    </button>
-                    <button
-                      className="w-full flex items-center gap-2 px-3 py-2.5 font-sans text-[13px] text-white/70 hover:bg-white/5 transition-colors"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
-                      Distribuie
-                    </button>
-                  </div>
-                )}
+                <span className="font-sans font-bold text-[15px] shrink-0" style={{ color: "rgba(255,255,255,0.75)" }}>
+                  {song.freq}
+                </span>
               </div>
             );
           })}
+
+          <div className="h-6" />
         </div>
       </div>
     </div>
