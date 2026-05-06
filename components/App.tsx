@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SONGS as MOCK_SONGS, type Song } from "@/lib/data";
 import Nav from "./Nav";
 import RadioView from "./RadioView";
@@ -11,7 +11,7 @@ type Tab = "radio" | "biblioteca" | "top" | "bilete";
 
 export default function App() {
   const [tab, setTab]           = useState<Tab>("radio");
-  const [playing, setPlaying]   = useState(true);
+  const [playing, setPlaying]   = useState(false);
   const [songIdx, setSongIdx]   = useState(0);
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -21,6 +21,7 @@ export default function App() {
     () => Object.fromEntries(MOCK_SONGS.map(s => [s.id, s.votes]))
   );
   const [voted, setVoted] = useState<Set<number>>(new Set());
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Pull live songs from /api/songs. If the API has any rows, use them.
   // Otherwise we keep the mock data so the page never feels broken.
@@ -39,6 +40,35 @@ export default function App() {
   }, []);
 
   const currentSong = songs[songIdx] ?? songs[0];
+
+  // Sync the <audio> element to currentSong + playing state.
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (!currentSong?.fileUrl) return;
+
+    // Only swap src when it actually changes — avoids restart on re-renders.
+    if (a.src !== currentSong.fileUrl) {
+      a.src = currentSong.fileUrl;
+      a.load();
+    }
+  }, [currentSong?.id, currentSong?.fileUrl]);
+
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (playing && currentSong?.fileUrl) {
+      const p = a.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {
+          // Autoplay was blocked — surface as paused so the UI is honest.
+          setPlaying(false);
+        });
+      }
+    } else {
+      a.pause();
+    }
+  }, [playing, currentSong?.id, currentSong?.fileUrl]);
 
   const toggleVote = (id: number) => {
     setVoted(prev => {
@@ -76,8 +106,24 @@ export default function App() {
     }, 1600);
   };
 
+  // Auto-advance when a song ends
+  function handleAudioEnded() {
+    setSongIdx(i => (i + 1) % songs.length);
+  }
+
   return (
     <div className="fixed inset-0 flex flex-col">
+      {/* Persistent audio element — single source of truth for playback */}
+      <audio
+        ref={audioRef}
+        onEnded={handleAudioEnded}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        preload="auto"
+        playsInline
+        crossOrigin="anonymous"
+        className="hidden"
+      />
 
       {/* ── Views ── */}
       <div className="flex-1 min-h-0 relative overflow-hidden">
