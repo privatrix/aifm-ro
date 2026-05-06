@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Song, VIO_LINES, SONGS } from "@/lib/data";
+import { Song, VIO_LINES } from "@/lib/data";
 import Oscilloscope from "./Oscilloscope";
 
 interface Props {
   song: Song;
+  songs: Song[];
   playing: boolean;
   setPlaying: (p: boolean) => void;
   voted: boolean;
@@ -48,7 +49,7 @@ function timeOfDayLabel(): string {
 }
 
 export default function RadioView({
-  song, playing, setPlaying, voted, votes, onVote, onPrev, onNext, onNote, onOpenLibrary,
+  song, songs, playing, setPlaying, voted, votes, onVote, onPrev, onNext, onNote, onOpenLibrary,
 }: Props) {
   const [lineIdx, setLineIdx] = useState(0);
   const [listeners, setListeners] = useState(1247);
@@ -98,15 +99,18 @@ export default function RadioView({
     return () => clearInterval(t);
   }, []);
 
-  const scanPct = 18 + ((song.id - 1) / Math.max(1, SONGS.length - 1)) * 64;
+  // Position the dial thumb proportional to where this song sits in the list.
+  const idx = Math.max(0, songs.findIndex(s => s.id === song.id));
+  const scanPct = 18 + (idx / Math.max(1, songs.length - 1)) * 64;
 
   // Up next: cycle forward from current
-  const currentIdx = SONGS.findIndex(s => s.id === song.id);
-  const nextSongs = [
-    SONGS[(currentIdx + 1) % SONGS.length],
-    SONGS[(currentIdx + 2) % SONGS.length],
-  ];
-  const previousSong = SONGS[(currentIdx - 1 + SONGS.length) % SONGS.length];
+  const nextSongs = songs.length > 1
+    ? [
+        songs[(idx + 1) % songs.length],
+        songs[(idx + 2) % songs.length],
+      ]
+    : [];
+  const previousSong = songs[(idx - 1 + songs.length) % songs.length];
 
   const statusLines = [
     { dot: "bg-red-500", text: <>Pe Undă · <span className="font-mono text-white/70">{listeners.toLocaleString("ro-RO")}</span></> },

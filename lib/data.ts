@@ -1,4 +1,5 @@
-export type Genre = "Ambient" | "Lo-fi" | "Electronic" | "Jazz" | "Indie" | "Synthwave" | "Pop" | "Folk";
+// NOTE: Genre is a free-form string (Romanian list lives in lib/palettes.ts).
+export type Genre = string;
 
 export interface Song {
   id: number;
@@ -9,6 +10,7 @@ export interface Song {
   gradient: [string, string];
   bpm: number;
   freq: string;
+  fileUrl?: string | null;
 }
 
 export interface VioNote {

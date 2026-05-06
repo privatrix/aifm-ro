@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { SONGS } from "@/lib/data";
+import { useEffect, useState } from "react";
+import { SONGS as MOCK_SONGS, type Song } from "@/lib/data";
 import Nav from "./Nav";
 import RadioView from "./RadioView";
 import LibraryView from "./LibraryView";
@@ -16,13 +16,29 @@ export default function App() {
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [noteSent, setNoteSent] = useState(false);
-
+  const [songs, setSongs] = useState<Song[]>(MOCK_SONGS);
   const [votes, setVotes] = useState<Record<number, number>>(
-    () => Object.fromEntries(SONGS.map(s => [s.id, s.votes]))
+    () => Object.fromEntries(MOCK_SONGS.map(s => [s.id, s.votes]))
   );
   const [voted, setVoted] = useState<Set<number>>(new Set());
 
-  const currentSong = SONGS[songIdx];
+  // Pull live songs from /api/songs. If the API has any rows, use them.
+  // Otherwise we keep the mock data so the page never feels broken.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/songs", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (cancelled || !j?.ok || !Array.isArray(j.songs) || j.songs.length === 0) return;
+        setSongs(j.songs as Song[]);
+        setSongIdx(0);
+        setVotes(Object.fromEntries((j.songs as Song[]).map((s) => [s.id, s.votes])));
+      })
+      .catch(() => { /* keep mock fallback */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const currentSong = songs[songIdx] ?? songs[0];
 
   const toggleVote = (id: number) => {
     setVoted(prev => {
@@ -34,8 +50,8 @@ export default function App() {
     });
   };
 
-  const prevSong = () => setSongIdx(i => (i - 1 + SONGS.length) % SONGS.length);
-  const nextSong = () => setSongIdx(i => (i + 1) % SONGS.length);
+  const prevSong = () => setSongIdx(i => (i - 1 + songs.length) % songs.length);
+  const nextSong = () => setSongIdx(i => (i + 1) % songs.length);
   const playSong = (idx: number) => { setSongIdx(idx); setTab("radio"); };
 
   const submitNote = () => {
@@ -68,6 +84,7 @@ export default function App() {
         {tab === "radio" && (
           <RadioView
             song={currentSong}
+            songs={songs}
             playing={playing}
             setPlaying={setPlaying}
             voted={voted.has(currentSong.id)}
@@ -81,7 +98,7 @@ export default function App() {
         )}
         {tab === "biblioteca" && (
           <LibraryView
-            songs={SONGS}
+            songs={songs}
             voted={voted}
             votes={votes}
             onVote={toggleVote}
@@ -92,7 +109,7 @@ export default function App() {
         )}
         {tab === "top" && (
           <TopView
-            songs={SONGS}
+            songs={songs}
             voted={voted}
             votes={votes}
             onVote={toggleVote}

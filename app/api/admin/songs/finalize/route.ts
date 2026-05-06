@@ -71,32 +71,38 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, song: row });
   }
 
-  // Create new row.
-  const all = await db.select({ freq: songs.freq, id: songs.id }).from(songs);
-  const freq = pickFreeFreq(all.map((r) => r.freq));
-  if (!freq) {
-    return NextResponse.json({ ok: false, error: "no free FM slot left" }, { status: 409 });
-  }
+  // Create new row. Retry on freq collision (concurrent uploads can race).
   const [from, to] = pickRandomGradient();
-  try {
-    const [row] = await db
-      .insert(songs)
-      .values({
-        title: customTitle ?? stripExt(fileName).slice(0, 200),
-        genre: customGenre ?? "Ambient",
-        freq,
-        bpm: 0,
-        durationSeconds: duration,
-        gradientFrom: from,
-        gradientTo: to,
-        pinned: false,
-        status: "active",
-        fileKey: key,
-        fileUrl,
-      })
-      .returning();
-    return NextResponse.json({ ok: true, song: row });
-  } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const all = await db.select({ freq: songs.freq }).from(songs);
+    const freq = pickFreeFreq(all.map((r) => r.freq));
+    if (!freq) {
+      return NextResponse.json({ ok: false, error: "no free FM slot left" }, { status: 409 });
+    }
+    try {
+      const [row] = await db
+        .insert(songs)
+        .values({
+          title: customTitle ?? stripExt(fileName).slice(0, 200),
+          genre: customGenre ?? "Ambient",
+          freq,
+          bpm: 0,
+          durationSeconds: duration,
+          gradientFrom: from,
+          gradientTo: to,
+          pinned: false,
+          status: "active",
+          fileKey: key,
+          fileUrl,
+        })
+        .returning();
+      return NextResponse.json({ ok: true, song: row });
+    } catch (e) {
+      const msg = (e as Error).message;
+      // If it's a unique-constraint violation on freq, loop and try the next slot.
+      if (/duplicate|unique/i.test(msg) && attempt < 4) continue;
+      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    }
   }
+  return NextResponse.json({ ok: false, error: "could not allocate freq after retries" }, { status: 500 });
 }
