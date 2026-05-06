@@ -61,6 +61,15 @@ export const playHistory = aifm.table("play_history", {
   endedAt: timestamp("ended_at", { withTimezone: true }),
 });
 
+export const vioLines = aifm.table("vio_lines", {
+  id: serial("id").primaryKey(),
+  text: text("text").notNull(),
+  // Optional time-of-day band: "morning" | "day" | "evening" | "night" | null (any time).
+  band: text("band"),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const voteLog = aifm.table(
   "vote_log",
   {
@@ -78,3 +87,5 @@ export type Song = typeof songs.$inferSelect;
 export type NewSong = typeof songs.$inferInsert;
 export type Note = typeof notes.$inferSelect;
 export type NewNote = typeof notes.$inferInsert;
+export type VioLine = typeof vioLines.$inferSelect;
+export type NewVioLine = typeof vioLines.$inferInsert;

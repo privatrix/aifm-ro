@@ -43,6 +43,24 @@ export default function SettingsPage() {
       </section>
 
       <section className="space-y-3">
+        <h2 className="admin-label !text-[12px]">Broadcast</h2>
+        <p className="text-[12px]" style={{ color: "rgba(236,231,216,0.55)" }}>
+          Force the live radio to advance to the next song right now.
+        </p>
+        <button
+          onClick={async () => {
+            if (!confirm("Skip the current song now?")) return;
+            const r = await fetch("/api/admin/skip-current", { method: "POST" });
+            const j = await r.json();
+            alert(j.ok ? `Now playing: ${j.current?.title}` : `Error: ${j.error}`);
+          }}
+          className="admin-btn admin-btn-ghost"
+        >
+          ⏭ Skip current track
+        </button>
+      </section>
+
+      <section className="space-y-3">
         <h2 className="admin-label !text-[12px]">Genre migration</h2>
         <p className="text-[12px]" style={{ color: "rgba(236,231,216,0.55)" }}>
           Re-map any old English genre tags (Ambient, Lo-fi, Synthwave, etc.) to the Romanian canonical list. Idempotent.

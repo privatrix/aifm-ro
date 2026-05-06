@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Song, VIO_LINES } from "@/lib/data";
+import { Song, VIO_LINES as MOCK_LINES } from "@/lib/data";
 import Oscilloscope from "./Oscilloscope";
 
 interface Props {
@@ -52,6 +52,14 @@ function timeOfDayLabel(): string {
   return "Programul de noapte";
 }
 
+function currentBand(): "morning" | "day" | "evening" | "night" {
+  const h = new Date().getHours();
+  if (h >= 6 && h < 10) return "morning";
+  if (h >= 10 && h < 18) return "day";
+  if (h >= 18 && h < 22) return "evening";
+  return "night";
+}
+
 export default function RadioView({
   song, songs, playing, setPlaying, voted, votes, onVote, onPrev, onNext, onNote, onOpenLibrary,
   liveMode, onReturnToLive, upNext, listenerCount,
@@ -59,6 +67,26 @@ export default function RadioView({
   const [lineIdx, setLineIdx] = useState(0);
   const [statusIdx, setStatusIdx] = useState(0);
   const [visibleListeners, setVisibleListeners] = useState(LISTENER_POOL.slice(0, 5));
+  const [vioLines, setVioLines] = useState<string[]>(MOCK_LINES);
+
+  // Pull real Vio lines from /api/vio-lines, filtered by current band.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/vio-lines", { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (cancelled || !j?.ok || !Array.isArray(j.lines)) return;
+        const band = currentBand();
+        const matching = j.lines.filter((l: { text: string; band: string | null }) =>
+          l.band === null || l.band === band
+        );
+        const pool = matching.length > 0 ? matching : j.lines;
+        if (pool.length > 0) {
+          setVioLines(pool.map((l: { text: string }) => l.text));
+        }
+      }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Update CSS custom properties when song changes — drives the ambient tint
   useEffect(() => {
@@ -69,9 +97,9 @@ export default function RadioView({
   }, [song.gradient]);
 
   useEffect(() => {
-    const t = setInterval(() => setLineIdx(i => (i + 1) % VIO_LINES.length), 5500);
+    const t = setInterval(() => setLineIdx(i => (i + 1) % Math.max(1, vioLines.length)), 5500);
     return () => clearInterval(t);
-  }, []);
+  }, [vioLines.length]);
 
   useEffect(() => {
     const t = setInterval(() => setStatusIdx(i => (i + 1) % 3), 4000);
@@ -296,7 +324,7 @@ export default function RadioView({
       <div className="w-full max-w-[340px] flex flex-col items-center gap-2">
         <span className="text-[14px] opacity-50 animate-breathe">{moodEmoji()}</span>
         <p key={lineIdx} className="font-serif text-[15px] text-white/65 italic leading-snug text-center px-2 animate-fade-in">
-          &ldquo;{VIO_LINES[lineIdx]}&rdquo;
+          &ldquo;{vioLines[lineIdx % Math.max(1, vioLines.length)]}&rdquo;
         </p>
         <div className="flex items-center gap-1.5 mt-1">
           <div className="flex -space-x-2">

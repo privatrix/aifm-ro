@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const ITEMS = [
   { href: "/admin/songs", label: "Songs" },
   { href: "/admin/notes", label: "Notes" },
+  { href: "/admin/vio", label: "Vio" },
   { href: "/admin/stats", label: "Stats" },
   { href: "/admin/settings", label: "Settings" },
 ];
@@ -14,7 +15,7 @@ export default function AdminNav({ variant }: { variant: "sidebar" | "bottom" })
   const pathname = usePathname();
   if (variant === "bottom") {
     return (
-      <ul className="grid grid-cols-4">
+      <ul className="grid grid-cols-5">
         {ITEMS.map((it) => {
           const active = pathname?.startsWith(it.href);
           return (
