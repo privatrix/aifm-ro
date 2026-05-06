@@ -70,6 +70,8 @@ export async function finalizeUpload(opts: {
   id?: number;
   key: string;
   fileName: string;
+  title?: string;
+  genre?: string;
 }): Promise<{ song: unknown }> {
   const r = await fetch("/api/admin/songs/finalize", {
     method: "POST",
