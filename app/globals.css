@@ -7,65 +7,52 @@
 html, body { height: 100%; width: 100%; }
 body {
   font-family: var(--font-sans);
-  background: #070708;
+  background: #0d0620;
   position: fixed; inset: 0;
   overflow: hidden;
 }
 
-/* Tungsten lamp — fixed warm gradient covering top-center of the booth */
+/* ── Pink lamp glow ── */
 .lamp {
-  position: absolute;
-  inset: 0;
+  position: absolute; inset: 0;
   background:
-    radial-gradient(60% 50% at 50% 18%, rgba(245, 181, 98, 0.22), rgba(245, 181, 98, 0.05) 45%, transparent 75%),
-    radial-gradient(40% 35% at 50% 12%, rgba(255, 220, 160, 0.18), transparent 70%);
+    radial-gradient(60% 50% at 50% 18%, rgba(233,30,140,0.22), rgba(194,24,91,0.06) 45%, transparent 75%),
+    radial-gradient(40% 35% at 50% 12%, rgba(255,64,129,0.13), transparent 70%);
   pointer-events: none;
   mix-blend-mode: screen;
   transition: opacity .8s ease;
 }
 
-/* Subtle film grain */
+/* ── Film grain ── */
 .grain::before {
   content: "";
   position: absolute; inset: 0;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.05 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
   mix-blend-mode: overlay;
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
-/* Vignette */
+/* ── Vignette ── */
 .vignette::after {
   content: "";
   position: absolute; inset: 0;
-  background: radial-gradient(120% 90% at 50% 50%, transparent 50%, rgba(0,0,0,0.7) 100%);
+  background: radial-gradient(120% 90% at 50% 50%, transparent 50%, rgba(0,0,0,0.65) 100%);
   pointer-events: none;
 }
 
-.dock-btn {
-  width: 44px; height: 44px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  color: #ece7d8;
-  transition: background .15s ease, border-color .15s ease, transform .1s ease;
-}
-.dock-btn:hover { background: rgba(245,181,98,0.10); border-color: rgba(245,181,98,0.25); }
-.dock-btn:active { transform: scale(0.96); }
-.dock-btn[data-active="true"] {
-  background: rgba(245,181,98,0.18);
-  border-color: rgba(245,181,98,0.55);
-  color: #f5b562;
+/* ── Scanlines ── */
+.scanline {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.015) 0px,
+    rgba(255,255,255,0.015) 1px,
+    transparent 1px,
+    transparent 3px
+  );
 }
 
-.dock-primary {
-  background: linear-gradient(180deg, #f5b562, #c47626);
-  color: #1a1107;
-  border-color: transparent;
-}
-.dock-primary:hover { background: linear-gradient(180deg, #ffc888, #d68936); }
-
+/* ── Mono label / tag ── */
 .tag {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -73,60 +60,128 @@ body {
   text-transform: uppercase;
 }
 
-.glyph-V {
-  font-family: var(--font-serif);
-  font-size: clamp(160px, 30vw, 360px);
-  line-height: 0.8;
-  letter-spacing: -0.03em;
-  background: linear-gradient(180deg, #f5b562 0%, #c47626 70%, #6a3c12 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 0 60px rgba(245, 181, 98, 0.15);
-}
-.glyph-glow {
-  position: absolute; inset: -10%;
-  background: radial-gradient(closest-side, rgba(245,181,98,0.30), transparent 65%);
-  filter: blur(20px);
-  pointer-events: none;
-  z-index: -1;
-}
-
-.scanline {
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255,255,255,0.02) 0px,
-    rgba(255,255,255,0.02) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-}
-
-/* Modal */
-.note-modal {
-  background: rgba(14, 13, 16, 0.92);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(245, 181, 98, 0.2);
-}
-
-.note-input {
+/* ── Dock buttons (main controls below card) ── */
+.dock-btn {
+  height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 14px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
-  color: #ece7d8;
+  color: #fff;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .1s ease;
+}
+.dock-btn:hover  { background: rgba(233,30,140,0.12); border-color: rgba(233,30,140,0.3); }
+.dock-btn:active { transform: scale(0.96); }
+.dock-btn[data-active="true"] {
+  background: rgba(233,30,140,0.2);
+  border-color: rgba(233,30,140,0.6);
+  color: #FF4081;
+}
+
+.dock-primary {
+  width: 56px; height: 56px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #E91E8C, #9C1458);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(233,30,140,0.45);
+  transition: box-shadow .15s ease, transform .1s ease;
+}
+.dock-primary:hover  { box-shadow: 0 4px 36px rgba(233,30,140,0.65); }
+.dock-primary:active { transform: scale(0.96); }
+
+/* ── Inside-card action buttons ── */
+.card-btn {
+  width: 40px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.22);
+  border: 1px solid rgba(255,255,255,0.18);
+  cursor: pointer;
+  transition: background .12s ease, transform .1s ease;
+}
+.card-btn:hover  { background: rgba(0,0,0,0.35); }
+.card-btn:active { transform: scale(0.93); }
+.card-btn[data-active="true"] { background: rgba(255,255,255,0.28); }
+
+/* ── Note modal ── */
+.note-modal {
+  background: rgba(22,10,48,0.96);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(233,30,140,0.28);
+}
+.note-input {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
   font-family: var(--font-mono);
   font-size: 14px;
   padding: 12px 14px;
-  border-radius: 8px;
+  border-radius: 12px;
   width: 100%;
   outline: none;
+  resize: none;
   transition: border-color .15s ease;
 }
-.note-input:focus { border-color: rgba(245,181,98,0.5); }
+.note-input:focus { border-color: rgba(233,30,140,0.55); }
 
-/* Side rail */
-.rail-row {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: #b9b3a5;
+/* ── Scrollable view container ── */
+.view-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
-.rail-row .num { color: #5fd4e6; opacity: 0.65; }
+.view-scroll::-webkit-scrollbar { width: 3px; }
+.view-scroll::-webkit-scrollbar-track { background: transparent; }
+.view-scroll::-webkit-scrollbar-thumb { background: rgba(233,30,140,0.3); border-radius: 2px; }
+
+/* ── Song card (library) ── */
+.song-card {
+  border-radius: 22px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.song-card:hover  { transform: translateY(-2px); box-shadow: 0 10px 36px rgba(0,0,0,0.5); }
+.song-card:active { transform: scale(0.97); }
+
+/* ── Genre pill ── */
+.genre-pill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.85);
+}
+
+/* ── Top-chart row ── */
+.rank-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 20px;
+  cursor: pointer;
+  transition: background .12s ease;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.rank-row:hover  { background: rgba(255,255,255,0.03); }
+.rank-row:active { background: rgba(255,255,255,0.06); }
+
+/* ── Note message card ── */
+.note-card {
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  padding: 16px;
+}
+
+/* ── iOS / Android safe-area ── */
+.pt-safe { padding-top: max(1rem, env(safe-area-inset-top)); }
+.pb-safe { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }

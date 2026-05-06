@@ -1,5 +1,5 @@
-import Booth from "@/components/Booth";
+import App from "@/components/App";
 
 export default function Home() {
-  return <Booth />;
+  return <App />;
 }
