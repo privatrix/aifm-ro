@@ -3,7 +3,10 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  /* `light` so the browser's overscroll/safe-area paints white, not dark.
+     We render our own dark UI surfaces explicitly where we want them
+     (Radio gradient, drawer header, etc). */
+  color-scheme: light;
   /* Updated by RadioView when the active song changes. */
   --accent-from: #E91E8C;
   --accent-to: #6A1B9A;
