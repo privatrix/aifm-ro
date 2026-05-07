@@ -108,35 +108,90 @@ export default function App() {
    * an <audio> element so we can ask `canPlayType`. Memoised so we don't
    * resolve a new value on every render.
    */
-  const resolveLiveUrl = useCallback((): string => {
-    const opusUrl = process.env.NEXT_PUBLIC_STREAM_URL || "";
-    const mp3Url = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
-    // MP3 plays on every browser. If we have an MP3 mount, just use it. Opus
-    // is only useful as a bandwidth saver, not a correctness requirement, and
-    // its detection (canPlayType) is unreliable on iOS Safari.
-    if (mp3Url) return mp3Url;
-    return opusUrl;
+  /** Track the active hls.js instance so we can tear it down on src changes. */
+  const hlsRef = useRef<{ destroy: () => void } | null>(null);
+
+  /**
+   * Decide which live stream URL to use for this browser:
+   *   1. NEXT_PUBLIC_STREAM_URL_HLS — chunked HLS (works on every browser,
+   *      survives carrier-grade NATs, plays through hls.js or natively on
+   *      Safari). Default if set.
+   *   2. NEXT_PUBLIC_STREAM_URL_MP3 — Icecast MP3 mount.
+   *   3. NEXT_PUBLIC_STREAM_URL    — Icecast Opus mount.
+   *
+   * Returns both the URL and a `kind` so the audio sync effect knows whether
+   * it has to bring up hls.js for non-Safari browsers.
+   */
+  const resolveLiveUrl = useCallback((): { url: string; kind: "hls" | "mp3" | "opus" } => {
+    const hls = process.env.NEXT_PUBLIC_STREAM_URL_HLS || "";
+    const mp3 = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
+    const opus = process.env.NEXT_PUBLIC_STREAM_URL || "";
+    if (hls) return { url: hls, kind: "hls" };
+    if (mp3) return { url: mp3, kind: "mp3" };
+    return { url: opus, kind: "opus" };
   }, []);
 
   // 4. Sync audio src.
   //
-  // Live mode: point at the Icecast broadcast URL. Every listener gets the
-  // exact same bytes from the same offset — a true live radio stream.
+  // Live mode: point at the broadcast URL. HLS is preferred and uses hls.js
+  // on browsers that don't natively support it (everything except Safari).
   // Solo mode: per-song fileUrl from the catalogue.
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
 
-    const liveUrl = resolveLiveUrl();
-    if (liveMode && liveUrl) {
-      if (a.src !== liveUrl) {
-        a.src = liveUrl;
+    // Tear down any previous hls.js attachment when src needs to change.
+    const cleanupHls = () => {
+      if (hlsRef.current) {
+        try { hlsRef.current.destroy(); } catch {}
+        hlsRef.current = null;
+      }
+    };
+
+    if (liveMode) {
+      const { url, kind } = resolveLiveUrl();
+      if (!url) return;
+
+      if (kind === "hls") {
+        const safariNative = a.canPlayType("application/vnd.apple.mpegurl") !== "";
+        if (safariNative) {
+          cleanupHls();
+          if (a.src !== url) {
+            a.src = url;
+            a.load();
+          }
+          return;
+        }
+        // Non-Safari: use hls.js. Lazy-load to keep the bundle small.
+        cleanupHls();
+        // Clear any existing src so the audio element doesn't try to play it.
+        if (a.src && a.src !== "") { a.removeAttribute("src"); a.load(); }
+        void import("hls.js").then(({ default: Hls }) => {
+          if (!Hls.isSupported()) {
+            // Fallback to MP3.
+            const mp3 = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
+            if (mp3) { a.src = mp3; a.load(); }
+            return;
+          }
+          const hls = new Hls({ liveBackBufferLength: 0, lowLatencyMode: false });
+          hls.loadSource(url);
+          hls.attachMedia(a);
+          hlsRef.current = hls;
+        }).catch(err => console.warn("[audio] hls.js load failed", err));
+        return;
+      }
+
+      // mp3 / opus: simple <audio src=…>
+      cleanupHls();
+      if (a.src !== url) {
+        a.src = url;
         a.load();
       }
       return;
     }
 
-    // Solo mode (or live-mode fallback before stream is online).
+    // Solo mode.
+    cleanupHls();
     if (!currentSong?.fileUrl) return;
     if (a.src === currentSong.fileUrl) return;
     a.src = currentSong.fileUrl;
