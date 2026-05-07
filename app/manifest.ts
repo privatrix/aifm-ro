@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Radio AI 24/7. Vio nu doarme.",
     start_url: "/",
     display: "standalone",
-    background_color: "#0d0620",
-    theme_color: "#E91E8C",
+    background_color: "#ffffff",
+    theme_color: "#ffffff",
     orientation: "portrait",
     categories: ["music", "entertainment"],
     icons: [
