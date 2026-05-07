@@ -99,30 +99,30 @@ export default function RadioView({
           </div>
         )}
 
-        {/* Center: waveform + genre + title */}
-        <div className="flex-1 flex flex-col items-center justify-center px-6 gap-4 min-h-0">
-          {/* Waveform with prev/next + genre overlay */}
+        {/* Center: waveform + title */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6 gap-3 min-h-0">
+          {/* Genre pill — small, above the waveform */}
+          <div
+            className="font-mono text-[10px] tracking-[0.2em] uppercase text-white/70 px-3 py-1 rounded-full"
+            style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)" }}
+          >
+            {song.genre}
+          </div>
+
+          {/* Waveform with prev/next */}
           <div className="relative w-full max-w-[340px] h-[110px]">
             <Oscilloscope playing={playing} />
-            <div className="absolute inset-0 flex items-center justify-between z-10 px-1">
+            <div className="absolute inset-0 flex items-center justify-between z-10 px-1 pointer-events-none">
               <button
                 onClick={onPrev}
-                className="text-white/85 font-sans font-bold text-[15px] tracking-tight active:scale-90 transition-transform select-none px-2"
+                className="text-white/85 font-sans font-bold text-[15px] tracking-tight active:scale-90 transition-transform select-none px-2 pointer-events-auto"
                 aria-label="Piesa anterioară"
               >
                 ◀◀
               </button>
-              <div className="text-center leading-none select-none px-2 max-w-[60%]" style={{ textShadow: "0 2px 16px rgba(0,0,0,0.4)" }}>
-                <div
-                  className="text-white font-serif font-normal truncate"
-                  style={{ fontSize: "clamp(28px, 7vw, 40px)", letterSpacing: "0.01em" }}
-                >
-                  {song.genre}
-                </div>
-              </div>
               <button
                 onClick={onNext}
-                className="text-white/85 font-sans font-bold text-[15px] tracking-tight active:scale-90 transition-transform select-none px-2"
+                className="text-white/85 font-sans font-bold text-[15px] tracking-tight active:scale-90 transition-transform select-none px-2 pointer-events-auto"
                 aria-label="Piesa următoare"
               >
                 ▶▶
