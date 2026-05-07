@@ -35,7 +35,7 @@ function durationToSec(d: string): number {
 
 export default function LibraryView({
   songs, voted, votes, onVote, currentSong,
-  onPlay, onPlayInline, onToggleInline, isPlaying,
+  onPlayInline, onToggleInline, isPlaying,
   onBack,
 }: Props) {
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -308,17 +308,6 @@ export default function LibraryView({
                         >
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                           Ascultă aici
-                        </button>
-                        <button
-                          onClick={() => { onPlay(globalIdx); }}
-                          className="flex items-center gap-1.5 px-4 h-9 rounded-full font-sans text-[13px] text-white font-medium active:scale-95 transition-transform"
-                          style={{ background: "rgba(255,255,255,0.20)" }}
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M6.3 6.3a9 9 0 000 11.4M17.7 6.3a9 9 0 010 11.4"/>
-                          </svg>
-                          În Radio
                         </button>
                         <button
                           onClick={async () => {
