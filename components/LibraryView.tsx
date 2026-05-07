@@ -245,8 +245,16 @@ export default function LibraryView({
             <div key={group.label || "_"}>
               {group.label && (
                 <div
-                  className="px-5 py-2 font-mono text-[10px] tracking-widest uppercase sticky top-0 z-[1]"
-                  style={{ color: "#8e8e93", background: "white", borderBottom: "1px solid #f1f1f3" }}
+                  className="px-5 font-mono text-[10px] tracking-widest uppercase"
+                  style={{
+                    color: "#8e8e93",
+                    background: "#fafafc",
+                    borderTop: "1px solid #f1f1f3",
+                    borderBottom: "1px solid #f1f1f3",
+                    height: 22,
+                    display: "flex",
+                    alignItems: "center",
+                  }}
                 >
                   {group.label}
                 </div>
@@ -409,19 +417,20 @@ export default function LibraryView({
             </div>
           ))}
 
-          <div className="h-24" />
+          {/* Spacer so the last rows aren't covered by the mini-player */}
+          <div className="h-28" />
         </div>
 
         {/* Sticky mini-player at the bottom of the white sheet */}
         <div
-          className="absolute left-0 right-0 px-3"
+          className="absolute left-0 right-0 px-3 z-10 pointer-events-none"
           style={{ bottom: 8 }}
         >
           <div
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-2xl"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-2xl pointer-events-auto"
             style={{
               background: `linear-gradient(135deg, ${currentSong.gradient[0]}, ${currentSong.gradient[1]})`,
-              boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
+              boxShadow: "0 6px 24px rgba(0,0,0,0.18)",
             }}
           >
             <div
