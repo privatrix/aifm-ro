@@ -4,10 +4,11 @@ import { SONGS as MOCK_SONGS, type Song } from "@/lib/data";
 import Nav from "./Nav";
 import RadioView from "./RadioView";
 import LibraryView from "./LibraryView";
-import TopView from "./TopView";
 import NotesView from "./NotesView";
+import MenuDrawer from "./MenuDrawer";
+import ProfileView from "./ProfileView";
 
-type Tab = "radio" | "biblioteca" | "top" | "bilete";
+type Tab = "radio" | "biblioteca" | "bilete" | "profile";
 
 interface NowPlaying {
   current: Song & { durationSeconds: number };
@@ -19,6 +20,7 @@ interface NowPlaying {
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("radio");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -263,7 +265,7 @@ export default function App() {
             onPrev={prevSong}
             onNext={nextSong}
             onNote={() => setShowNote(true)}
-            onOpenLibrary={() => setTab("biblioteca")}
+            onOpenLibrary={() => setMenuOpen(true)}
             liveMode={liveMode}
             onReturnToLive={returnToLive}
             upNext={nowPlaying?.upNext ?? null}
@@ -281,22 +283,36 @@ export default function App() {
             onBack={() => setTab("radio")}
           />
         )}
-        {tab === "top" && (
-          <TopView
-            songs={songs}
-            voted={voted}
-            votes={votes}
-            onVote={toggleVote}
-            currentSong={currentSong}
-            onPlay={gotoSong}
-          />
-        )}
         {tab === "bilete" && (
           <NotesView onNote={() => setShowNote(true)} />
+        )}
+        {tab === "profile" && (
+          <ProfileView
+            user={null}
+            onSignIn={() => { /* TODO: backend */ }}
+            onSignUp={() => { /* TODO: backend */ }}
+          />
         )}
       </div>
 
       <Nav active={tab} setActive={setTab} />
+
+      <MenuDrawer
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onNavigate={(target) => {
+          if (target === "profile") setTab("profile");
+          else if (target === "favorites") setTab("biblioteca");
+          else if (target === "notes") setTab("bilete");
+          else if (target === "history" || target === "settings" || target === "help") {
+            // Routed to profile for now; dedicated views can be added later.
+            setTab("profile");
+          }
+        }}
+        user={null}
+        onSignIn={() => setTab("profile")}
+        onSignUp={() => setTab("profile")}
+      />
 
       {showNote && (
         <div

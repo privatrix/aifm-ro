@@ -1,6 +1,6 @@
 "use client";
 
-type Tab = "radio" | "biblioteca" | "top" | "bilete";
+type Tab = "radio" | "biblioteca" | "bilete" | "profile";
 
 interface NavProps {
   active: Tab;
@@ -32,20 +32,21 @@ const TABS: { id: Tab; label: string; icon: (active: boolean) => React.ReactNode
     ),
   },
   {
-    id: "top",
-    label: "Top 100",
-    icon: (a) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={a ? 2.2 : 1.8} strokeLinecap="round">
-        <path d="M18 20V10M12 20V4M6 20v-6"/>
-      </svg>
-    ),
-  },
-  {
     id: "bilete",
     label: "Bilete",
     icon: (a) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={a ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+    ),
+  },
+  {
+    id: "profile",
+    label: "Profil",
+    icon: (a) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={a ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 21a8 8 0 0116 0"/>
       </svg>
     ),
   },
