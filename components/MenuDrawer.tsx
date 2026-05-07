@@ -5,7 +5,6 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onNavigate: (target: "profile" | "favorites" | "notes" | "history" | "settings" | "help") => void;
-  // future: signed-in user passed in
   user?: { name: string; handle: string; avatarUrl?: string } | null;
   onSignIn?: () => void;
   onSignUp?: () => void;
@@ -105,21 +104,25 @@ export default function MenuDrawer({ open, onClose, onNavigate, user, onSignIn, 
       <div
         onClick={onClose}
         className="absolute inset-0 transition-opacity duration-200"
-        style={{ background: "rgba(10,5,20,0.55)", backdropFilter: "blur(4px)", opacity: open ? 1 : 0 }}
+        style={{ background: "rgba(10,5,20,0.45)", backdropFilter: "blur(4px)", opacity: open ? 1 : 0 }}
       />
 
-      {/* Drawer */}
+      {/* Drawer (white) */}
       <aside
         className="absolute top-0 left-0 h-full w-[86%] max-w-[340px] flex flex-col transition-transform duration-300"
         style={{
-          background: "#1a1820",
+          background: "#ffffff",
+          color: "#1a1820",
           transform: open ? "translateX(0)" : "translateX(-100%)",
-          boxShadow: "0 0 60px rgba(0,0,0,0.5)",
+          boxShadow: "0 0 60px rgba(0,0,0,0.25)",
           paddingTop: "env(safe-area-inset-top)",
         }}
       >
         {/* Header / user card */}
-        <div className="px-5 pt-5 pb-4 flex items-center gap-3 border-b border-white/5">
+        <div
+          className="px-5 pt-5 pb-4 flex items-center gap-3"
+          style={{ borderBottom: "1px solid #f1ebe0" }}
+        >
           {user ? (
             <>
               <div
@@ -132,12 +135,13 @@ export default function MenuDrawer({ open, onClose, onNavigate, user, onSignIn, 
                 ) : user.name.slice(0, 1).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-white font-sans font-bold text-[15px] truncate">{user.name}</div>
-                <div className="text-white/50 font-sans text-[12px] truncate">@{user.handle}</div>
+                <div className="font-sans font-bold text-[15px] truncate" style={{ color: "#1a1820" }}>{user.name}</div>
+                <div className="font-sans text-[12px] truncate" style={{ color: "#9b8f7d" }}>@{user.handle}</div>
               </div>
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-white/60 active:scale-90 transition-transform"
+                className="w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-transform"
+                style={{ color: "#9b8f7d", background: "#f7f1e6" }}
                 aria-label="Închide"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -148,8 +152,8 @@ export default function MenuDrawer({ open, onClose, onNavigate, user, onSignIn, 
           ) : (
             <>
               <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white/60 shrink-0"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
+                className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                style={{ background: "#FCE4EC", color: "#C2185B" }}
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="8" r="4"/>
@@ -157,12 +161,13 @@ export default function MenuDrawer({ open, onClose, onNavigate, user, onSignIn, 
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-white font-sans font-bold text-[15px]">Bun venit la AIFM</div>
-                <div className="text-white/50 font-sans text-[12px]">conectează-te ca să salvezi piese</div>
+                <div className="font-sans font-bold text-[15px]" style={{ color: "#1a1820" }}>Bun venit la AIFM</div>
+                <div className="font-sans text-[12px]" style={{ color: "#9b8f7d" }}>conectează-te ca să salvezi piese</div>
               </div>
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-white/60 active:scale-90 transition-transform"
+                className="w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-transform"
+                style={{ color: "#9b8f7d", background: "#f7f1e6" }}
                 aria-label="Închide"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -185,8 +190,8 @@ export default function MenuDrawer({ open, onClose, onNavigate, user, onSignIn, 
             </button>
             <button
               onClick={() => { onSignUp?.(); }}
-              className="flex-1 h-11 rounded-xl font-sans text-[13px] font-semibold text-white/85 active:scale-[0.97] transition-transform"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
+              className="flex-1 h-11 rounded-xl font-sans text-[13px] font-semibold active:scale-[0.97] transition-transform"
+              style={{ background: "#FCE4EC", color: "#C2185B" }}
             >
               Cont nou
             </button>
@@ -200,20 +205,20 @@ export default function MenuDrawer({ open, onClose, onNavigate, user, onSignIn, 
               <li key={item.id}>
                 <button
                   onClick={() => { onNavigate(item.id); onClose(); }}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:scale-[0.99] transition-transform"
-                  style={{ color: "#fff" }}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:bg-pink-50 transition-colors"
+                  style={{ color: "#1a1820" }}
                 >
                   <span
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-white/85 shrink-0"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: "#FCE4EC", color: "#C2185B" }}
                   >
                     {item.icon}
                   </span>
                   <span className="flex-1 min-w-0">
                     <span className="block font-sans font-semibold text-[14px]">{item.label}</span>
-                    {item.hint && <span className="block font-sans text-[11px] text-white/40 mt-0.5">{item.hint}</span>}
+                    {item.hint && <span className="block font-sans text-[11px] mt-0.5" style={{ color: "#9b8f7d" }}>{item.hint}</span>}
                   </span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/30">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#cfc6b4" }}>
                     <path d="M9 6l6 6-6 6"/>
                   </svg>
                 </button>
@@ -223,17 +228,20 @@ export default function MenuDrawer({ open, onClose, onNavigate, user, onSignIn, 
         </nav>
 
         {/* Footer */}
-        <div className="px-5 pt-2 pb-4 border-t border-white/5" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
+        <div
+          className="px-5 pt-2 pb-4"
+          style={{ borderTop: "1px solid #f1ebe0", paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+        >
           {user ? (
             <button
               onClick={() => { onSignOut?.(); }}
-              className="w-full h-10 rounded-xl font-sans text-[13px] font-medium text-white/70 active:scale-[0.97] transition-transform"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+              className="w-full h-10 rounded-xl font-sans text-[13px] font-medium active:scale-[0.97] transition-transform"
+              style={{ background: "#FCE4EC", color: "#C2185B" }}
             >
               Deconectare
             </button>
           ) : (
-            <div className="text-center text-white/30 font-mono text-[10px] tracking-widest uppercase">
+            <div className="text-center font-mono text-[10px] tracking-widest uppercase" style={{ color: "#cfc6b4" }}>
               AIFM · v0.1
             </div>
           )}

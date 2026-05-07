@@ -13,6 +13,7 @@ interface Props {
   onVote: () => void;
   onPrev: () => void;
   onNext: () => void;
+  onShuffle: () => void;
   onNote: () => void;
   onOpenLibrary: () => void;
   liveMode: boolean;
@@ -24,7 +25,7 @@ interface Props {
 const TICK_HEIGHTS = [6,10,7,14,9,18,8,22,12,16,8,20,25,18,12,7,22,16,10,8,20,14,9,18,12,7,16,11,19,8,14,22,10,16];
 
 export default function RadioView({
-  song, songs, playing, setPlaying, voted, votes, onVote, onPrev, onNext, onNote, onOpenLibrary,
+  song, songs, playing, setPlaying, voted, votes, onVote, onPrev, onNext, onShuffle, onNote, onOpenLibrary,
   liveMode, onReturnToLive,
 }: Props) {
 
@@ -193,6 +194,15 @@ export default function RadioView({
           <button className="card-action" onClick={onNote} aria-label="Trimite bilet">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/>
+            </svg>
+          </button>
+          <button className="card-action" onClick={onShuffle} aria-label="Piesă aleatorie">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 3 21 3 21 8"/>
+              <line x1="4" y1="20" x2="21" y2="3"/>
+              <polyline points="21 16 21 21 16 21"/>
+              <line x1="15" y1="15" x2="21" y2="21"/>
+              <line x1="4" y1="4" x2="9" y2="9"/>
             </svg>
           </button>
         </div>

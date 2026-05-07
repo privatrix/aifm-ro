@@ -193,6 +193,16 @@ export default function App() {
       return ((cur + 1) % songs.length);
     });
   };
+  const shuffleSong = () => {
+    if (songs.length <= 1) return;
+    setLiveMode(false);
+    setSoloIdx(i => {
+      const cur = liveMode ? songs.findIndex(s => s.id === currentSong?.id) : i;
+      let next = Math.floor(Math.random() * songs.length);
+      if (next === cur) next = (next + 1) % songs.length;
+      return next;
+    });
+  };
 
   const submitNote = () => {
     if (!noteText.trim()) return;
@@ -264,6 +274,7 @@ export default function App() {
             onVote={() => toggleVote(currentSong.id)}
             onPrev={prevSong}
             onNext={nextSong}
+            onShuffle={shuffleSong}
             onNote={() => setShowNote(true)}
             onOpenLibrary={() => setMenuOpen(true)}
             liveMode={liveMode}
