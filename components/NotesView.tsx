@@ -91,7 +91,7 @@ export default function NotesView({ onNote }: Props) {
   const typing = typingPool[typingIdx % Math.max(1, typingPool.length)];
 
   return (
-    <div className="absolute inset-0 flex flex-col pt-3">
+    <div className="absolute inset-0 flex flex-col">
       <div className="white-view">
 
         {/* Header */}

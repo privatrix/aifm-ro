@@ -102,7 +102,7 @@ export default function LibraryView({
   const totalShown = visible.length;
 
   return (
-    <div className="absolute inset-0 flex flex-col pt-3">
+    <div className="absolute inset-0 flex flex-col">
       <div className="white-view">
 
         {/* Header */}

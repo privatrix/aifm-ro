@@ -127,12 +127,10 @@ body::after {
 /* ── White card views (Library, Notes) ── */
 .white-view {
   background: #ffffff;
-  border-radius: 28px 28px 0 0;
   height: 100%;
   display: flex;
   flex-direction: column;
   color: #1a1820;
-  box-shadow: 0 -10px 40px rgba(0,0,0,0.18);
 }
 .white-header {
   padding: 16px 20px 12px;
