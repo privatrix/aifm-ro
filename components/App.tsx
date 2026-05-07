@@ -169,11 +169,20 @@ export default function App() {
     }
   }, [voted]);
 
-  // Engage solo mode when user manually changes track
+  // Engage solo mode when user manually changes track (jumps to player tab)
   function gotoSong(idx: number) {
     setLiveMode(false);
     setSoloIdx(idx);
     setTab("radio");
+  }
+  // Same as gotoSong but stays on the current tab and starts audio.
+  function playSongInline(idx: number) {
+    setLiveMode(false);
+    setSoloIdx(idx);
+    setPlaying(true);
+  }
+  function toggleInline() {
+    setPlaying(p => !p);
   }
   function returnToLive() {
     setLiveMode(true);
@@ -291,6 +300,9 @@ export default function App() {
             onVote={toggleVote}
             currentSong={currentSong}
             onPlay={gotoSong}
+            onPlayInline={playSongInline}
+            onToggleInline={toggleInline}
+            isPlaying={playing}
             onBack={() => setTab("radio")}
           />
         )}
