@@ -149,11 +149,33 @@ export default function RadioView({
           </div>
         </div>
 
-        {/* Action buttons row — same as before */}
+        {/* Action buttons row */}
         <div className="flex items-center justify-around px-12 pb-6">
-          <button className="card-action" onClick={onNext} aria-label="Următor">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round">
-              <path d="M6 6l12 12M18 6L6 18"/>
+          <button
+            className="card-action"
+            onClick={async () => {
+              const url = typeof window !== "undefined" ? window.location.href : "";
+              const data = { title: "AIFM", text: `Ascult „${song.title}” pe AIFM`, url };
+              try {
+                if (typeof navigator !== "undefined" && "share" in navigator) {
+                  await (navigator as Navigator & { share: (d: ShareData) => Promise<void> }).share(data);
+                  return;
+                }
+              } catch { /* user cancelled or share failed — fall through */ }
+              try {
+                if (typeof navigator !== "undefined" && navigator.clipboard) {
+                  await navigator.clipboard.writeText(url);
+                }
+              } catch {}
+            }}
+            aria-label="Distribuie"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"/>
+              <circle cx="6" cy="12" r="3"/>
+              <circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
             </svg>
           </button>
           <button
