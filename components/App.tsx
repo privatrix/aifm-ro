@@ -109,14 +109,13 @@ export default function App() {
    * resolve a new value on every render.
    */
   const resolveLiveUrl = useCallback((): string => {
-    const a = audioRef.current;
     const opusUrl = process.env.NEXT_PUBLIC_STREAM_URL || "";
     const mp3Url = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
-    if (!a) return opusUrl || mp3Url;
-    const opusOk = a.canPlayType('audio/ogg; codecs="opus"') === "probably"
-      || a.canPlayType("audio/ogg; codecs=opus") === "probably";
-    if (mp3Url && (!opusOk || !opusUrl)) return mp3Url;
-    return opusUrl || mp3Url;
+    // MP3 plays on every browser. If we have an MP3 mount, just use it. Opus
+    // is only useful as a bandwidth saver, not a correctness requirement, and
+    // its detection (canPlayType) is unreliable on iOS Safari.
+    if (mp3Url) return mp3Url;
+    return opusUrl;
   }, []);
 
   // 4. Sync audio src.
@@ -160,12 +159,19 @@ export default function App() {
       const p = a.play();
       if (p && typeof p.catch === "function") {
         p.catch((err) => {
-          // Autoplay blocked or src not ready — reset state so the user can
-          // tap again. iOS commonly throws NotAllowedError here.
           console.warn("[audio] play() rejected:", err?.name, err?.message);
           setPlaying(false);
         });
       }
+      // Surface audio element errors as paused state so the UI doesn't lie.
+      const onError = () => {
+        const e = a.error;
+        console.warn("[audio] element error:", e?.code, e?.message);
+        setPlaying(false);
+      };
+      a.addEventListener("error", onError, { once: true });
+      const onStalled = () => console.warn("[audio] stalled (network slowed)");
+      a.addEventListener("stalled", onStalled, { once: true });
     } else {
       a.pause();
       // For live mode, also reload to drop the buffered tail so next play()
