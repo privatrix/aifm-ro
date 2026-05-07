@@ -65,19 +65,27 @@ export async function GET() {
   const elapsedSec = Math.max(0, Math.floor((now - startedMs) / 1000));
   const durationSec = Math.max(1, current.durationSeconds || 180); // fallback to 3min if unknown
 
-  const lastHb = state.lastHeartbeatAt ? new Date(state.lastHeartbeatAt).getTime() : 0;
-  const liveAgeMs = lastHb ? now - lastHb : Infinity;
+  // The live encoder is the source of truth. Read last_heartbeat_at via raw
+  // SQL to be 100% sure we're not hitting a stale drizzle column mapping.
+  const liveRows = await db.execute(sql<{ last_heartbeat_at: Date | null }>`
+    SELECT last_heartbeat_at FROM aifm.playback_state WHERE id = 1
+  `);
+  // drizzle's execute returns a result-set with .rows on pg.
+  const lastHbRaw = (liveRows as unknown as { rows?: Array<{ last_heartbeat_at: Date | string | null }> }).rows?.[0]?.last_heartbeat_at
+    ?? state.lastHeartbeatAt
+    ?? null;
+  const lastHbMs = lastHbRaw ? new Date(lastHbRaw as string | Date).getTime() : 0;
+  const liveAgeMs = lastHbMs ? now - lastHbMs : Infinity;
   const live = liveAgeMs <= LIVE_WINDOW_MS;
 
   // Live broadcast: trust the encoder. Don't auto-advance, just return what's
-  // currently on air. Encoder will send a new heartbeat with the next songId
-  // when the song changes.
+  // currently on air.
   if (live) {
     const upNext = await pickNextSong(current.id);
     return NextResponse.json({
       ok: true,
       live: true,
-      lastHeartbeatAt: state.lastHeartbeatAt?.toISOString?.() ?? null,
+      lastHeartbeatAt: lastHbRaw ? new Date(lastHbRaw as string | Date).toISOString() : null,
       current: shape(current),
       startedAt: state.startedAt?.toISOString?.() ?? new Date(startedMs).toISOString(),
       elapsedSeconds: elapsedSec,
@@ -125,7 +133,7 @@ export async function GET() {
       return NextResponse.json({
         ok: true,
         live: false,
-        lastHeartbeatAt: state.lastHeartbeatAt?.toISOString?.() ?? null,
+        lastHeartbeatAt: lastHbRaw ? new Date(lastHbRaw as string | Date).toISOString() : null,
         current: shape(next),
         startedAt: newStart.toISOString(),
         elapsedSeconds: 0,
@@ -140,7 +148,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     live: false,
-    lastHeartbeatAt: state.lastHeartbeatAt?.toISOString?.() ?? null,
+    lastHeartbeatAt: lastHbRaw ? new Date(lastHbRaw as string | Date).toISOString() : null,
     current: shape(current),
     startedAt: state.startedAt?.toISOString?.() ?? new Date(startedMs).toISOString(),
     elapsedSeconds: elapsedSec,
