@@ -2,11 +2,10 @@ import { neon, neonConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 
-// Keep the connection cache (handshake reuse), but force every query through
-// fetch with cache:"no-store". Otherwise Vercel's Data Cache happily memoises
-// SELECTs and we end up serving stale playback_state for hours.
+// Keep the connection cache (handshake reuse). Per-query fetch options are
+// applied below when we build the neon() client — we pass cache:"no-store"
+// there so Vercel's Data Cache doesn't memoise SELECTs and serve stale rows.
 neonConfig.fetchConnectionCache = true;
-neonConfig.fetchOptions = { cache: "no-store" };
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -20,7 +19,10 @@ export function getDb() {
   if (!url) {
     throw new Error("DATABASE_URL is not set. Add Neon Postgres via the Vercel integration.");
   }
-  const sql = neon(url);
+  // fetchOptions: cache:"no-store" is critical — without it Vercel will cache
+  // GET /sql calls (yes, neon-http uses HTTP) and we end up serving stale
+  // playback_state for hours. Connection-handshake caching still applies.
+  const sql = neon(url, { fetchOptions: { cache: "no-store" } as RequestInit });
   _db = drizzle(sql, { schema });
   return _db;
 }
