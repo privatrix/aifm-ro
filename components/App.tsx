@@ -56,17 +56,25 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  // 2. Poll /api/now every 7s while in live mode
+  // 2. Poll /api/now every 5s while in live mode.
+  //
+  // The encoder fires its on_metadata callback the moment the next song
+  // begins mixing in (start of the crossfade), but listeners hear the OLD
+  // song dominate for ~1-2s afterwards. To keep the displayed title in
+  // sync with what's audibly playing, we delay applying any *song change*
+  // by a short visual debounce. Listener count etc. updates immediately.
+  const TITLE_LAG_MS = 1500;
   useEffect(() => {
     if (!liveMode) return;
     let cancelled = false;
+    let pendingTimer: ReturnType<typeof setTimeout> | null = null;
     const fetchNow = async () => {
       try {
         const r = await fetch("/api/now", { cache: "no-store" });
         if (!r.ok) return;
         const j = await r.json();
         if (cancelled || !j?.ok) return;
-        setNowPlaying({
+        const next = {
           current: j.current,
           startedAt: j.startedAt,
           elapsedSeconds: j.elapsedSeconds,
@@ -74,12 +82,30 @@ export default function App() {
           upNext: j.upNext,
           live: !!j.live,
           lastHeartbeatAt: j.lastHeartbeatAt ?? null,
+        };
+        setNowPlaying(prev => {
+          // First payload, or anything where the song id is the same: apply now.
+          if (!prev || prev.current?.id === next.current?.id) {
+            return next;
+          }
+          // Song change: schedule the swap to lag the audio crossfade.
+          if (pendingTimer) clearTimeout(pendingTimer);
+          pendingTimer = setTimeout(() => {
+            if (!cancelled) setNowPlaying(next);
+            pendingTimer = null;
+          }, TITLE_LAG_MS);
+          // Don't visually update yet — keep the old title until the timer fires.
+          return prev;
         });
       } catch { /* network blip */ }
     };
     fetchNow();
-    const t = setInterval(fetchNow, 7000);
-    return () => { cancelled = true; clearInterval(t); };
+    const t = setInterval(fetchNow, 5000);
+    return () => {
+      cancelled = true;
+      if (pendingTimer) clearTimeout(pendingTimer);
+      clearInterval(t);
+    };
   }, [liveMode]);
 
   // 3. Heartbeat for listener count (every 25s)
@@ -173,7 +199,24 @@ export default function App() {
             if (mp3) { a.src = mp3; a.load(); }
             return;
           }
-          const hls = new Hls({ liveBackBufferLength: 0, lowLatencyMode: false });
+          // Generous client-side buffer so transient mobile-network jitter
+          // (especially on roaming) can't underrun the player.
+          // - maxBufferLength: how much audio to keep buffered ahead
+          // - maxMaxBufferLength: hard ceiling
+          // - liveSyncDurationCount: how many segments to stay behind live edge
+          //   (3 = ~6s on 2s segments; safe against jitter, still feels live)
+          const hls = new Hls({
+            lowLatencyMode: false,
+            backBufferLength: 0,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
+            liveSyncDurationCount: 3,
+            liveMaxLatencyDurationCount: 10,
+            // Aggressive recovery from network blips.
+            fragLoadingMaxRetry: 6,
+            manifestLoadingMaxRetry: 6,
+            levelLoadingMaxRetry: 6,
+          });
           hls.loadSource(url);
           hls.attachMedia(a);
           hlsRef.current = hls;
