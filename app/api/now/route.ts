@@ -46,6 +46,9 @@ async function getOrInitState() {
   return (await db.select().from(playbackState).where(eq(playbackState.id, 1)))[0];
 }
 
+/** Heartbeat is considered fresh if it arrived in the last LIVE_WINDOW_MS. */
+const LIVE_WINDOW_MS = 30_000;
+
 export async function GET() {
   const state = await getOrInitState();
   if (!state || !state.currentSongId) {
@@ -62,6 +65,28 @@ export async function GET() {
   const elapsedSec = Math.max(0, Math.floor((now - startedMs) / 1000));
   const durationSec = Math.max(1, current.durationSeconds || 180); // fallback to 3min if unknown
 
+  const lastHb = state.lastHeartbeatAt ? new Date(state.lastHeartbeatAt).getTime() : 0;
+  const liveAgeMs = lastHb ? now - lastHb : Infinity;
+  const live = liveAgeMs <= LIVE_WINDOW_MS;
+
+  // Live broadcast: trust the encoder. Don't auto-advance, just return what's
+  // currently on air. Encoder will send a new heartbeat with the next songId
+  // when the song changes.
+  if (live) {
+    const upNext = await pickNextSong(current.id);
+    return NextResponse.json({
+      ok: true,
+      live: true,
+      lastHeartbeatAt: state.lastHeartbeatAt?.toISOString?.() ?? null,
+      current: shape(current),
+      startedAt: state.startedAt?.toISOString?.() ?? new Date(startedMs).toISOString(),
+      elapsedSeconds: elapsedSec,
+      serverNow: new Date(now).toISOString(),
+      upNext: upNext ? shape(upNext) : null,
+    });
+  }
+
+  // No live encoder — fall back to the local-timer schedule.
   // If the current song has finished, advance.
   if (elapsedSec >= durationSec) {
     const next = await pickNextSong(current.id);
@@ -99,6 +124,8 @@ export async function GET() {
 
       return NextResponse.json({
         ok: true,
+        live: false,
+        lastHeartbeatAt: state.lastHeartbeatAt?.toISOString?.() ?? null,
         current: shape(next),
         startedAt: newStart.toISOString(),
         elapsedSeconds: 0,
@@ -108,10 +135,12 @@ export async function GET() {
     }
   }
 
-  // Still on the current song.
+  // Still on the current song (local-timer mode).
   const upNext = await pickNextSong(current.id);
   return NextResponse.json({
     ok: true,
+    live: false,
+    lastHeartbeatAt: state.lastHeartbeatAt?.toISOString?.() ?? null,
     current: shape(current),
     startedAt: state.startedAt?.toISOString?.() ?? new Date(startedMs).toISOString(),
     elapsedSeconds: elapsedSec,

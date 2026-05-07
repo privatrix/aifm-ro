@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Song } from "@/lib/data";
 import Oscilloscope from "./Oscilloscope";
 
@@ -20,14 +20,32 @@ interface Props {
   onReturnToLive: () => void;
   upNext: Song | null;
   listenerCount: number | null;
+  /** True when /api/now reports a fresh heartbeat from the encoder. */
+  broadcastLive?: boolean;
 }
 
 const TICK_HEIGHTS = [6,10,7,14,9,18,8,22,12,16,8,20,25,18,12,7,22,16,10,8,20,14,9,18,12,7,16,11,19,8,14,22,10,16];
 
 export default function RadioView({
   song, songs, playing, setPlaying, voted, votes, onVote, onPrev, onNext, onShuffle, onNote, onOpenLibrary,
-  liveMode, onReturnToLive,
+  liveMode, onReturnToLive, broadcastLive = false,
 }: Props) {
+
+  // Pulse the heart whenever the live song changes — nudge users to vote on
+  // the new track without being annoying.
+  const [heartPulse, setHeartPulse] = useState(false);
+  const lastIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (lastIdRef.current !== null && lastIdRef.current !== song.id && liveMode) {
+      setHeartPulse(true);
+      const t = setTimeout(() => setHeartPulse(false), 1200);
+      return () => clearTimeout(t);
+    }
+    lastIdRef.current = song.id;
+  }, [song.id, liveMode]);
+
+  // Off-air status: in live mode, no fresh heartbeat = encoder is down.
+  const offAir = liveMode && !broadcastLive;
 
   // Update CSS custom properties when song changes — drives the ambient tint
   useEffect(() => {
@@ -163,11 +181,17 @@ export default function RadioView({
             </svg>
           </button>
           <button
-            className="card-action flex items-center gap-1.5"
+            className={`card-action flex items-center gap-1.5 ${heartPulse ? "animate-breathe" : ""}`}
             data-active={voted}
             onClick={onVote}
             aria-label="Votează"
-            style={{ width: "auto", padding: "0 14px", borderRadius: "999px" }}
+            style={{
+              width: "auto",
+              padding: "0 14px",
+              borderRadius: "999px",
+              transform: heartPulse ? "scale(1.06)" : undefined,
+              transition: "transform 250ms ease",
+            }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill={voted ? "white" : "none"} stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
@@ -190,7 +214,7 @@ export default function RadioView({
           </button>
         </div>
 
-        {/* Bottom status strip (replaces the old scale + top pill) */}
+        {/* Bottom status strip */}
         <button
           onClick={liveMode ? undefined : onReturnToLive}
           disabled={liveMode}
@@ -198,9 +222,19 @@ export default function RadioView({
         >
           <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-white/75">
             <span
-              className={`w-1.5 h-1.5 rounded-full ${liveMode ? "bg-red-400 animate-breathe" : "bg-white/70"}`}
+              className={`w-1.5 h-1.5 rounded-full ${
+                offAir
+                  ? "bg-white/30"
+                  : liveMode
+                    ? "bg-red-400 animate-breathe"
+                    : "bg-white/70"
+              }`}
             />
-            {liveMode ? "pe undă" : "pe cont propriu · ↩ înapoi"}
+            {offAir
+              ? "în afara undei"
+              : liveMode
+                ? "pe undă"
+                : "pe cont propriu · ↩ înapoi"}
           </span>
           <span className="font-mono text-[10px] tracking-widest text-white/55">
             {idx + 1} / {songs.length}

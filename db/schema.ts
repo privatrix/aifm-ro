@@ -52,6 +52,8 @@ export const playbackState = aifm.table("playback_state", {
   currentSongId: integer("current_song_id"),
   startedAt: timestamp("started_at", { withTimezone: true }),
   nextSongId: integer("next_song_id"),
+  /** Last time the live encoder pinged us. Null = no live broadcast ever ran. */
+  lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }),
 });
 
 export const playHistory = aifm.table("play_history", {

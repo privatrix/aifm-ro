@@ -16,6 +16,9 @@ interface NowPlaying {
   elapsedSeconds: number;
   serverNow: string;       // ISO
   upNext: (Song & { durationSeconds: number }) | null;
+  /** True when a fresh heartbeat from the live encoder backs this snapshot. */
+  live?: boolean;
+  lastHeartbeatAt?: string | null;
 }
 
 export default function App() {
@@ -69,6 +72,8 @@ export default function App() {
           elapsedSeconds: j.elapsedSeconds,
           serverNow: j.serverNow,
           upNext: j.upNext,
+          live: !!j.live,
+          lastHeartbeatAt: j.lastHeartbeatAt ?? null,
         });
       } catch { /* network blip */ }
     };
@@ -296,6 +301,7 @@ export default function App() {
             onReturnToLive={returnToLive}
             upNext={nowPlaying?.upNext ?? null}
             listenerCount={listenerCount}
+            broadcastLive={!!nowPlaying?.live}
           />
         )}
         {tab === "biblioteca" && (

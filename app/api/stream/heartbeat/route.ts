@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, sql, and, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { playbackState } from "@/db/schema";
+import { playbackState, playHistory, songs } from "@/db/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,21 +10,14 @@ export const dynamic = "force-dynamic";
  * POST /api/stream/heartbeat
  *
  * Called every few seconds by the aifm-stream encoder. Updates playback_state
- * with the song the broadcast is currently on, so /api/now can serve it
- * unchanged and the website stays in sync with the actual audio.
+ * with the song the broadcast is currently on. When the songId changes
+ * compared to what we have stored, close out the old play_history row, insert
+ * a new one, and bump played_count + last_played_at on the new song.
  *
- * Auth: Bearer ${STREAM_HEARTBEAT_TOKEN}. If the env var is unset (e.g. in
- * dev) the endpoint is open — fine, but set it in prod.
+ * Auth: Bearer ${STREAM_HEARTBEAT_TOKEN}.
  *
  * Body:
- *   {
- *     songId:   number | null,
- *     title:    string | null,
- *     startedAt: ISO string | null,
- *     elapsedSeconds: number | null,
- *     bytesSent: number,
- *     encoderUptimeMs: number
- *   }
+ *   { songId, title, startedAt, elapsedSeconds, bytesSent, encoderUptimeMs }
  */
 export async function POST(req: NextRequest) {
   const expected = process.env.STREAM_HEARTBEAT_TOKEN;
@@ -51,25 +44,52 @@ export async function POST(req: NextRequest) {
   }
 
   const songId = typeof payload.songId === "number" ? payload.songId : null;
-  const startedAt = payload.startedAt ? new Date(payload.startedAt) : null;
+  const startedAt = payload.startedAt ? new Date(payload.startedAt) : new Date();
+  const heartbeatAt = new Date();
 
-  // Upsert the singleton row id=1.
   try {
+    const existing = await db.select().from(playbackState).where(eq(playbackState.id, 1));
+    const prevSongId = existing[0]?.currentSongId ?? null;
+
+    // Upsert the singleton row.
     await db
       .insert(playbackState)
       .values({
         id: 1,
         currentSongId: songId,
-        startedAt: startedAt ?? new Date(),
+        startedAt,
         nextSongId: null,
+        lastHeartbeatAt: heartbeatAt,
       })
       .onConflictDoUpdate({
         target: playbackState.id,
         set: {
           currentSongId: songId,
-          startedAt: startedAt ?? new Date(),
+          startedAt,
+          lastHeartbeatAt: heartbeatAt,
         },
       });
+
+    // Song change → write history.
+    if (songId !== null && songId !== prevSongId) {
+      // Close out any open history rows for the previous song.
+      if (prevSongId !== null) {
+        await db
+          .update(playHistory)
+          .set({ endedAt: heartbeatAt })
+          .where(and(eq(playHistory.songId, prevSongId), isNull(playHistory.endedAt)));
+      }
+      // New row for the new song.
+      await db.insert(playHistory).values({ songId, startedAt });
+      // Bump counters on the song.
+      await db
+        .update(songs)
+        .set({
+          playedCount: sql`${songs.playedCount} + 1`,
+          lastPlayedAt: startedAt,
+        })
+        .where(eq(songs.id, songId));
+    }
   } catch (err) {
     console.error("[stream/heartbeat] db error:", (err as Error).message);
     return NextResponse.json({ ok: false, error: "db" }, { status: 500 });
@@ -77,21 +97,26 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    receivedAt: new Date().toISOString(),
+    receivedAt: heartbeatAt.toISOString(),
     songId,
     elapsedSeconds: payload.elapsedSeconds ?? null,
   });
 }
 
+/** Quick health probe — useful for "is the encoder pinging us?" debugging. */
 export async function GET() {
-  // Quick health probe — useful for "is the encoder pinging us?" debugging.
   try {
     const rows = await db.select().from(playbackState).where(eq(playbackState.id, 1));
     const row = rows[0] ?? null;
+    const lastHb = row?.lastHeartbeatAt ?? null;
+    const ageMs = lastHb ? Date.now() - new Date(lastHb).getTime() : null;
     return NextResponse.json({
       ok: true,
-      lastHeartbeat: row?.startedAt ?? null,
+      lastHeartbeat: lastHb,
+      ageMs,
+      live: ageMs !== null && ageMs < 30_000,
       currentSongId: row?.currentSongId ?? null,
+      startedAt: row?.startedAt ?? null,
     });
   } catch (err) {
     return NextResponse.json({ ok: false, error: (err as Error).message }, { status: 500 });
