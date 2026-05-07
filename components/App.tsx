@@ -436,11 +436,11 @@ export default function App() {
   }
 
   if (!currentSong) {
-    return <div className="fixed inset-0 flex items-center justify-center text-bone/60 font-mono text-sm">Se încarcă…</div>;
+    return <div className="app-shell flex items-center justify-center text-bone/60 font-mono text-sm">Se încarcă…</div>;
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col">
+    <div className="app-shell flex flex-col">
       <audio
         ref={audioRef}
         onEnded={handleAudioEnded}

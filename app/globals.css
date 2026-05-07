@@ -9,10 +9,21 @@
   --accent-to: #6A1B9A;
 }
 html, body { height: 100%; }
+html {
+  /* Allow vertical scroll so iOS Safari can hide its URL bar on swipe up.
+     Without this, position:fixed body locks the URL bar permanently visible. */
+  overflow-y: auto;
+  /* Smooth iOS rubber-band behaviour. */
+  -webkit-overflow-scrolling: touch;
+}
 body {
   font-family: var(--font-sans);
-  position: fixed; inset: 0;
-  overflow: hidden;
+  /* The app itself uses position:fixed below — see App.tsx — so the body's
+     visible area is always covered. We just need the body to be tall enough
+     to register as scrollable, which lets Safari collapse its bottom toolbar
+     when the user swipes up. 101vh is the magic minimum. */
+  min-height: 101vh;
+  margin: 0;
   color: #f2f2f4;
   background:
     radial-gradient(70% 55% at 50% -5%,
@@ -23,6 +34,9 @@ body {
       transparent 70%),
     #1a1820;
   transition: background 800ms ease;
+  /* Disable iOS bounce-overscroll above the top — keeps the visual layout
+     pinned even though the body is technically scrollable. */
+  overscroll-behavior-y: none;
 }
 
 /* Subtle film grain on dark surfaces */
@@ -44,6 +58,26 @@ body::after {
   box-shadow: inset 0 0 80px 0 color-mix(in srgb, var(--accent-from) 12%, transparent);
   z-index: 1;
   transition: box-shadow 800ms ease;
+}
+
+/* ── App shell ──
+ *
+ * The app pins to the viewport visually but the body is still technically
+ * scrollable (see html { overflow-y: auto } + body { min-height: 101vh }).
+ * On iOS Safari this lets the bottom URL bar collapse on swipe-up while the
+ * UI stays edge-to-edge.
+ *
+ * 100dvh = dynamic viewport height — expands when Safari's URL bar hides,
+ * so we always cover exactly the visible area without leaving a stripe.
+ */
+.app-shell {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  /* Older Safari that doesn't know dvh falls back to vh. */
+  height: 100vh;
+  height: 100dvh;
+  z-index: 2;
 }
 
 /* ── Scrollable view ── */
