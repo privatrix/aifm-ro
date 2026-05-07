@@ -94,25 +94,9 @@ export default function RadioView({
             {song.genre}
           </div>
 
-          {/* Waveform with prev/next */}
+          {/* Waveform */}
           <div className="relative w-full max-w-[340px] h-[110px]">
             <Oscilloscope playing={playing} />
-            <div className="absolute inset-0 flex items-center justify-between z-10 px-1 pointer-events-none">
-              <button
-                onClick={onPrev}
-                className="text-white/85 font-sans font-bold text-[15px] tracking-tight active:scale-90 transition-transform select-none px-2 pointer-events-auto"
-                aria-label="Piesa anterioară"
-              >
-                ◀◀
-              </button>
-              <button
-                onClick={onNext}
-                className="text-white/85 font-sans font-bold text-[15px] tracking-tight active:scale-90 transition-transform select-none px-2 pointer-events-auto"
-                aria-label="Piesa următoare"
-              >
-                ▶▶
-              </button>
-            </div>
           </div>
 
           {/* Title */}
@@ -121,24 +105,48 @@ export default function RadioView({
             <div className="text-white/65 font-sans text-[13px] mt-1">{song.duration}</div>
           </div>
 
-          {/* Big center play/pause */}
-          <button
-            onClick={() => setPlaying(!playing)}
-            className={`mt-2 w-[72px] h-[72px] rounded-full flex items-center justify-center text-white active:scale-90 transition-transform ${!playing ? "animate-pulse-soft" : ""}`}
-            style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.30)", backdropFilter: "blur(6px)" }}
-            aria-label={playing ? "Pauză" : "Ascultă"}
-          >
-            {playing ? (
-              <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="5" width="4" height="14" rx="2"/>
-                <rect x="14" y="5" width="4" height="14" rx="2"/>
+          {/* Transport: prev / play / next */}
+          <div className="mt-2 flex items-center justify-center gap-7">
+            <button
+              onClick={onPrev}
+              className="w-12 h-12 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform"
+              style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.20)" }}
+              aria-label="Piesa anterioară"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 6h2v12H6zM20 6l-10 6 10 6V6z"/>
               </svg>
-            ) : (
-              <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 3 }}>
-                <path d="M8 5v14l11-7z"/>
+            </button>
+
+            <button
+              onClick={() => setPlaying(!playing)}
+              className={`w-[72px] h-[72px] rounded-full flex items-center justify-center text-white active:scale-90 transition-transform ${!playing ? "animate-pulse-soft" : ""}`}
+              style={{ background: "rgba(255,255,255,0.20)", border: "1px solid rgba(255,255,255,0.32)", backdropFilter: "blur(6px)" }}
+              aria-label={playing ? "Pauză" : "Ascultă"}
+            >
+              {playing ? (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="5" width="4" height="14" rx="2"/>
+                  <rect x="14" y="5" width="4" height="14" rx="2"/>
+                </svg>
+              ) : (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 3 }}>
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              )}
+            </button>
+
+            <button
+              onClick={onNext}
+              className="w-12 h-12 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform"
+              style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.20)" }}
+              aria-label="Piesa următoare"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16 6h2v12h-2zM4 6l10 6-10 6V6z"/>
               </svg>
-            )}
-          </button>
+            </button>
+          </div>
         </div>
 
         {/* Action buttons row — same as before */}
