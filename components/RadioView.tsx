@@ -68,23 +68,6 @@ export default function RadioView({
           <span className="w-9 h-9" aria-hidden="true" />
         </div>
 
-        {/* Solo-mode pill (only when off-air) */}
-        {!liveMode && (
-          <div className="px-6 mt-2">
-            <button
-              onClick={onReturnToLive}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-sans active:scale-[0.99] transition-transform"
-              style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.20)", color: "#fff" }}
-            >
-              <span className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
-                pe cont propriu
-              </span>
-              <span className="font-mono text-[10px] uppercase tracking-widest opacity-80">↩ pe undă</span>
-            </button>
-          </div>
-        )}
-
         {/* Center: waveform + title */}
         <div className="flex-1 flex flex-col items-center justify-center px-6 gap-3 min-h-0">
           {/* Genre pill — small, above the waveform */}
@@ -206,27 +189,23 @@ export default function RadioView({
             </svg>
           </button>
         </div>
-      </div>
 
-      {/* White bottom: position scale */}
-      <div className="px-6 pt-4 pb-5" style={{ background: "#ffffff" }}>
-        <div className="flex items-end gap-[3px] h-7 mb-2">
-          {TICK_HEIGHTS.map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-full"
-              style={{ height: `${h}px`, background: i % 5 === 0 ? "#E91E8C" : "#F48FB1" }}
+        {/* Bottom status strip (replaces the old scale + top pill) */}
+        <button
+          onClick={liveMode ? undefined : onReturnToLive}
+          disabled={liveMode}
+          className="w-full flex items-center justify-between px-6 pb-5 pt-1 text-left active:scale-[0.99] transition-transform disabled:active:scale-100"
+        >
+          <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-white/75">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${liveMode ? "bg-red-400 animate-breathe" : "bg-white/70"}`}
             />
-          ))}
-        </div>
-        <div className="freq-track mb-1">
-          <div className="h-full rounded-full" style={{ width: `${scanPct}%`, background: "rgba(233,30,140,0.4)" }} />
-          <div className="freq-thumb" style={{ left: `${scanPct}%` }} />
-        </div>
-        <div className="flex justify-between font-mono text-[10px] mt-1.5 tracking-wider uppercase" style={{ color: "#9b8f7d" }}>
-          <span>{idx + 1} / {songs.length}</span>
-          <span>{liveMode ? "PE UNDĂ" : "PE CONT PROPRIU"}</span>
-        </div>
+            {liveMode ? "pe undă" : "pe cont propriu · ↩ înapoi"}
+          </span>
+          <span className="font-mono text-[10px] tracking-widest text-white/55">
+            {idx + 1} / {songs.length}
+          </span>
+        </button>
       </div>
     </div>
   );
