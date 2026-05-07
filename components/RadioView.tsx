@@ -64,22 +64,7 @@ export default function RadioView({
             </svg>
           </button>
           <span className="text-white font-sans font-semibold text-[15px] tracking-[0.2em]">AIFM</span>
-          <button
-            onClick={() => setPlaying(!playing)}
-            className={`w-9 h-9 flex items-center justify-center text-white/85 active:scale-90 transition-transform ${!playing ? "animate-pulse-soft" : ""}`}
-            aria-label={playing ? "Pauză" : "Ascultă"}
-          >
-            {playing ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="5" width="4" height="14" rx="2"/>
-                <rect x="14" y="5" width="4" height="14" rx="2"/>
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-            )}
-          </button>
+          <span className="w-9 h-9" aria-hidden="true" />
         </div>
 
         {/* Solo-mode pill (only when off-air) */}
@@ -135,6 +120,25 @@ export default function RadioView({
             <div className="text-white font-sans font-bold text-[26px]">{song.title}</div>
             <div className="text-white/65 font-sans text-[13px] mt-1">{song.duration}</div>
           </div>
+
+          {/* Big center play/pause */}
+          <button
+            onClick={() => setPlaying(!playing)}
+            className={`mt-2 w-[72px] h-[72px] rounded-full flex items-center justify-center text-white active:scale-90 transition-transform ${!playing ? "animate-pulse-soft" : ""}`}
+            style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.30)", backdropFilter: "blur(6px)" }}
+            aria-label={playing ? "Pauză" : "Ascultă"}
+          >
+            {playing ? (
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="5" width="4" height="14" rx="2"/>
+                <rect x="14" y="5" width="4" height="14" rx="2"/>
+              </svg>
+            ) : (
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 3 }}>
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            )}
+          </button>
         </div>
 
         {/* Action buttons row — same as before */}
