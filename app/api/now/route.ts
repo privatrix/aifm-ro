@@ -70,13 +70,17 @@ export async function GET() {
   const liveRows = await db.execute(sql<{ last_heartbeat_at: Date | null }>`
     SELECT last_heartbeat_at FROM aifm.playback_state WHERE id = 1
   `);
-  // drizzle's execute returns a result-set with .rows on pg.
   const lastHbRaw = (liveRows as unknown as { rows?: Array<{ last_heartbeat_at: Date | string | null }> }).rows?.[0]?.last_heartbeat_at
     ?? state.lastHeartbeatAt
     ?? null;
   const lastHbMs = lastHbRaw ? new Date(lastHbRaw as string | Date).getTime() : 0;
   const liveAgeMs = lastHbMs ? now - lastHbMs : Infinity;
   const live = liveAgeMs <= LIVE_WINDOW_MS;
+
+  // If the encoder has *ever* sent a heartbeat, never run the local-timer
+  // auto-advance — it will fight whatever the encoder is doing. Just return
+  // whatever's currently in playback_state and let the heartbeat update it.
+  const everSeenEncoder = lastHbMs > 0;
 
   // Live broadcast: trust the encoder. Don't auto-advance, just return what's
   // currently on air.
@@ -94,8 +98,24 @@ export async function GET() {
     });
   }
 
-  // No live encoder — fall back to the local-timer schedule.
-  // If the current song has finished, advance.
+  // Encoder previously pinged us but is currently silent. Don't auto-advance:
+  // it might be a brief network hiccup, and racing against it produces the
+  // "songs flicker every few seconds" UX. Just return what's in the DB.
+  if (everSeenEncoder) {
+    const upNext = await pickNextSong(current.id);
+    return NextResponse.json({
+      ok: true,
+      live: false,
+      lastHeartbeatAt: lastHbRaw ? new Date(lastHbRaw as string | Date).toISOString() : null,
+      current: shape(current),
+      startedAt: state.startedAt?.toISOString?.() ?? new Date(startedMs).toISOString(),
+      elapsedSeconds: elapsedSec,
+      serverNow: new Date(now).toISOString(),
+      upNext: upNext ? shape(upNext) : null,
+    });
+  }
+
+  // No live encoder ever — fall back to the local-timer schedule (dev only).
   if (elapsedSec >= durationSec) {
     const next = await pickNextSong(current.id);
     if (next) {

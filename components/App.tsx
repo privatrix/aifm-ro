@@ -132,10 +132,34 @@ export default function App() {
     a.load();
   }, [currentSong?.id, currentSong?.fileUrl, liveMode, nowPlaying?.startedAt]);
 
-  // 5. Play/pause based on `playing`
+  // 5. Play/pause based on `playing`.
+  //
+  // Live mode: "pause" must NOT actually pause — the broadcast keeps moving
+  // and we'd fall behind. Mute instead, audio keeps flowing in the
+  // background, and "play" just unmutes. Real-radio behaviour.
+  //
+  // Solo mode: regular pause/resume.
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
+    const liveUrl = process.env.NEXT_PUBLIC_STREAM_URL || "";
+    const isLive = liveMode && !!liveUrl;
+
+    if (isLive) {
+      // Always trying to play (live) — toggle muted with the user's intent.
+      a.muted = !playing;
+      if (a.paused) {
+        const p = a.play();
+        if (p && typeof p.catch === "function") {
+          // If autoplay is blocked, surface that as paused so user can tap.
+          p.catch(() => setPlaying(false));
+        }
+      }
+      return;
+    }
+
+    // Solo mode: regular play/pause.
+    a.muted = false;
     if (playing && currentSong?.fileUrl) {
       const p = a.play();
       if (p && typeof p.catch === "function") {
@@ -144,7 +168,7 @@ export default function App() {
     } else {
       a.pause();
     }
-  }, [playing, currentSong?.id, currentSong?.fileUrl]);
+  }, [playing, liveMode, currentSong?.id, currentSong?.fileUrl]);
 
   // Vote handler (with API call)
   const toggleVote = useCallback(async (id: number) => {
