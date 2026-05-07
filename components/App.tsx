@@ -98,27 +98,33 @@ export default function App() {
     ? (nowPlaying?.current ?? songs[0])
     : songs[soloIdx];
 
-  // 4. Sync audio src to currentSong
+  // 4. Sync audio src.
+  //
+  // Live mode: point at the Icecast broadcast URL. Every listener gets the
+  // exact same bytes from the same offset — a true live radio stream.
+  // Solo mode: per-song fileUrl from the catalogue.
+  //
+  // The live URL comes from NEXT_PUBLIC_STREAM_URL. Falls back to the legacy
+  // per-song-fileUrl behaviour if the env var isn't set, so dev still works
+  // before the encoder is up.
   useEffect(() => {
     const a = audioRef.current;
-    if (!a || !currentSong?.fileUrl) return;
-    if (a.src === currentSong.fileUrl) return;
+    if (!a) return;
 
-    a.src = currentSong.fileUrl;
-    // In live mode, seek to wherever the broadcast is.
-    if (liveMode && nowPlaying) {
-      const elapsed = nowPlaying.elapsedSeconds;
-      a.load();
-      a.addEventListener("loadedmetadata", () => {
-        try {
-          if (Number.isFinite(elapsed) && elapsed > 0 && elapsed < (a.duration || 9999)) {
-            a.currentTime = elapsed;
-          }
-        } catch {}
-      }, { once: true });
-    } else {
-      a.load();
+    const liveUrl = process.env.NEXT_PUBLIC_STREAM_URL || "";
+    if (liveMode && liveUrl) {
+      if (a.src !== liveUrl) {
+        a.src = liveUrl;
+        a.load();
+      }
+      return;
     }
+
+    // Solo mode (or live-mode fallback before stream is online).
+    if (!currentSong?.fileUrl) return;
+    if (a.src === currentSong.fileUrl) return;
+    a.src = currentSong.fileUrl;
+    a.load();
   }, [currentSong?.id, currentSong?.fileUrl, liveMode, nowPlaying?.startedAt]);
 
   // 5. Play/pause based on `playing`
