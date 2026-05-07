@@ -107,7 +107,7 @@ export default function NotesView({ onNote }: Props) {
             </div>
           </div>
           {/* Primary tabs */}
-          <div className="flex gap-1 p-1 rounded-full w-fit" style={{ background: "#ece4d3" }}>
+          <div className="flex gap-1 p-1 rounded-full w-fit" style={{ background: "#f7f1e6", border: "1px solid #ece4d3" }}>
             {([["citite", "Citite de Vio"], ["coada", `Coada mea${myNotes.length ? ` · ${myNotes.length}` : ""}`]] as const).map(([id, label]) => (
               <button
                 key={id}
@@ -136,7 +136,7 @@ export default function NotesView({ onNote }: Props) {
                   style={{
                     background: filter === id ? "rgba(233,30,140,0.12)" : "transparent",
                     color: filter === id ? "#C2185B" : "#9b8f7d",
-                    border: filter === id ? "1px solid rgba(233,30,140,0.25)" : "1px solid #e3dac9",
+                    border: filter === id ? "1px solid rgba(233,30,140,0.25)" : "1px solid #ece4d3",
                   }}
                 >
                   {label}
@@ -179,7 +179,7 @@ export default function NotesView({ onNote }: Props) {
                     </div>
                     <div
                       className="rounded-2xl rounded-tl-md px-4 py-2.5"
-                      style={{ background: "#fbf6ec", border: "1px solid #e3dac9" }}
+                      style={{ background: "#faf7f2", border: "1px solid #ece4d3" }}
                     >
                       <p className="font-serif text-[14.5px] italic leading-snug" style={{ color: "#3a3530" }}>{note.text}</p>
                     </div>
@@ -252,7 +252,7 @@ export default function NotesView({ onNote }: Props) {
                     </div>
                     <div
                       className="rounded-2xl rounded-tl-md px-4 py-2.5"
-                      style={{ background: "#fbf6ec", border: "1px solid #e3dac9" }}
+                      style={{ background: "#faf7f2", border: "1px solid #ece4d3" }}
                     >
                       <p className="font-serif text-[14.5px] italic leading-snug" style={{ color: "#3a3530" }}>{n.text}</p>
                     </div>

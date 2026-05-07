@@ -366,7 +366,7 @@ export default function App() {
                   <button
                     onClick={() => setShowNote(false)}
                     className="flex-1 h-12 rounded-2xl font-sans text-[14px] font-medium"
-                    style={{ background: "#ece4d3", color: "#6e6657" }}
+                    style={{ background: "#f7f1e6", color: "#6e6657", border: "1px solid #ece4d3" }}
                   >
                     Renunță
                   </button>

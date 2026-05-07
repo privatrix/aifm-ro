@@ -31,7 +31,7 @@ export default function LibraryView({ songs, voted, votes, onVote, currentSong, 
             <button
               onClick={onBack}
               className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-transform"
-              style={{ background: "#ece4d3" }}
+              style={{ background: "#FCE4EC", color: "#C2185B" }}
               aria-label="Înapoi"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" strokeWidth="2.2" strokeLinecap="round">
@@ -52,7 +52,7 @@ export default function LibraryView({ songs, voted, votes, onVote, currentSong, 
               value={query}
               onChange={e => setQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 rounded-2xl font-sans text-[14px] outline-none"
-              style={{ background: "#fbf6ec", border: "1px solid #e3dac9", color: "#1a1820" }}
+              style={{ background: "#faf7f2", border: "1px solid #ece4d3", color: "#1a1820" }}
             />
           </div>
         </div>

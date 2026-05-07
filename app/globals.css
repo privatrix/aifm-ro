@@ -95,21 +95,19 @@ body::after {
   cursor: pointer;
 }
 
-/* ── Paper-tone card views (Library, Top, Notes) ── */
+/* ── White card views (Library, Notes) ── */
 .white-view {
-  background: #f3eee5;
-  background-image:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>");
+  background: #ffffff;
   border-radius: 28px 28px 0 0;
   height: 100%;
   display: flex;
   flex-direction: column;
   color: #1a1820;
-  box-shadow: 0 -10px 40px rgba(0,0,0,0.25);
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.18);
 }
 .white-header {
   padding: 16px 20px 12px;
-  border-bottom: 1px solid #e7dfd1;
+  border-bottom: 1px solid #f1ebe0;
   flex-shrink: 0;
 }
 
@@ -134,25 +132,25 @@ body::after {
   flex-shrink: 0;
 }
 
-/* ── Nav (paper-tone bottom bar) ── */
+/* ── Nav (white bottom bar) ── */
 .bottom-nav {
-  background: #f3eee5;
-  border-top: 1px solid #e7dfd1;
-  box-shadow: 0 -2px 16px rgba(0,0,0,0.18);
+  background: #ffffff;
+  border-top: 1px solid #f1ebe0;
+  box-shadow: 0 -2px 16px rgba(0,0,0,0.10);
   display: flex;
 }
 
-/* ── Note/send modal (paper bottom sheet) ── */
+/* ── Note/send modal (white bottom sheet) ── */
 .modal-sheet {
-  background: #f3eee5;
+  background: #ffffff;
   border-radius: 24px 24px 0 0;
   padding: 20px 20px;
   padding-bottom: max(20px, env(safe-area-inset-bottom));
   color: #1a1820;
 }
 .note-textarea {
-  background: #fbf6ec;
-  border: 1.5px solid #e3dac9;
+  background: #faf7f2;
+  border: 1.5px solid #ece4d3;
   border-radius: 14px;
   padding: 14px;
   font-size: 15px;
