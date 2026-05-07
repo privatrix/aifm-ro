@@ -109,14 +109,26 @@ export default function App() {
   // exact same bytes from the same offset — a true live radio stream.
   // Solo mode: per-song fileUrl from the catalogue.
   //
-  // The live URL comes from NEXT_PUBLIC_STREAM_URL. Falls back to the legacy
-  // per-song-fileUrl behaviour if the env var isn't set, so dev still works
-  // before the encoder is up.
+  // Format selection: Safari/iOS can't decode Opus in <audio>, so we fall
+  // back to the MP3 mount on those browsers. Detection is via canPlayType.
+  //
+  // NEXT_PUBLIC_STREAM_URL is the Opus URL. NEXT_PUBLIC_STREAM_URL_MP3, when
+  // set, is the MP3 fallback. If only one is set we use that.
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
 
-    const liveUrl = process.env.NEXT_PUBLIC_STREAM_URL || "";
+    const opusUrl = process.env.NEXT_PUBLIC_STREAM_URL || "";
+    const mp3Url = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
+    let liveUrl = opusUrl;
+    if (mp3Url) {
+      // Treat any browser that doesn't "probably" play Opus-in-Ogg as MP3-only.
+      // canPlayType returns "", "maybe", or "probably". Safari returns "".
+      const opusOk = a.canPlayType('audio/ogg; codecs="opus"') === "probably"
+        || a.canPlayType("audio/ogg; codecs=opus") === "probably";
+      if (!opusOk || !opusUrl) liveUrl = mp3Url;
+    }
+
     if (liveMode && liveUrl) {
       if (a.src !== liveUrl) {
         a.src = liveUrl;
