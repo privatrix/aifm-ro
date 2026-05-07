@@ -186,6 +186,41 @@ export default function App() {
             a.src = url;
             a.load();
           }
+          // iOS Safari treats HLS as a seekable timeline: when the network
+          // blips it pauses, buffers, then resumes at the same offset —
+          // listeners drift further and further behind live. Detect stalls
+          // (waiting/stalled events) and recovery (playing) and seek to the
+          // live edge each time so the listener stays on the broadcast.
+          const seekToLive = () => {
+            try {
+              const r = a.seekable;
+              if (r && r.length > 0) {
+                const liveEdge = r.end(r.length - 1);
+                // Stay 2s behind the very edge to keep a small buffer.
+                const target = Math.max(liveEdge - 2, 0);
+                if (target > a.currentTime + 1.5) {
+                  a.currentTime = target;
+                }
+              }
+            } catch {}
+          };
+          a.addEventListener("loadedmetadata", seekToLive);
+          a.addEventListener("playing", seekToLive);
+          a.addEventListener("waiting", seekToLive);
+          a.addEventListener("stalled", seekToLive);
+          // Also re-seek every 30s in case neither event fires after drift.
+          const t = setInterval(seekToLive, 30000);
+          // Stash cleanup handle as a fake "hlsRef" so the next src-change can
+          // dispose it.
+          hlsRef.current = {
+            destroy: () => {
+              clearInterval(t);
+              a.removeEventListener("loadedmetadata", seekToLive);
+              a.removeEventListener("playing", seekToLive);
+              a.removeEventListener("waiting", seekToLive);
+              a.removeEventListener("stalled", seekToLive);
+            },
+          };
           return;
         }
         // Non-Safari: use hls.js. Lazy-load to keep the bundle small.
