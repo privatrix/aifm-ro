@@ -99,15 +99,15 @@ export default function NotesView({ onNote }: Props) {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h1 className="font-serif font-normal text-[24px]" style={{ color: "#1a1820" }}>Bilete</h1>
-              <div className="font-mono text-[10px] tracking-wider" style={{ color: "#9b8f7d" }}>VIO ÎȚI CITEȘTE MESAJUL LIVE</div>
+              <div className="font-mono text-[10px] tracking-wider" style={{ color: "#8e8e93" }}>VIO ÎȚI CITEȘTE MESAJUL LIVE</div>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full animate-breathe" style={{ background: "#E91E8C" }} />
-              <span className="font-mono text-[11px]" style={{ color: "#9b8f7d" }}>{sourceNotes.length}</span>
+              <span className="font-mono text-[11px]" style={{ color: "#8e8e93" }}>{sourceNotes.length}</span>
             </div>
           </div>
           {/* Primary tabs */}
-          <div className="flex gap-1 p-1 rounded-full w-fit" style={{ background: "#f7f1e6", border: "1px solid #ece4d3" }}>
+          <div className="flex gap-1 p-1 rounded-full w-fit" style={{ background: "#f5f5f7", border: "1px solid #e5e5ea" }}>
             {([["citite", "Citite de Vio"], ["coada", `Coada mea${myNotes.length ? ` · ${myNotes.length}` : ""}`]] as const).map(([id, label]) => (
               <button
                 key={id}
@@ -115,7 +115,7 @@ export default function NotesView({ onNote }: Props) {
                 className="pill-btn"
                 style={{
                   background: tab === id ? "linear-gradient(135deg, #E91E8C, #C2185B)" : "transparent",
-                  color: tab === id ? "#fff" : "#6e6657",
+                  color: tab === id ? "#fff" : "#6e6e73",
                   height: "30px",
                   padding: "0 14px",
                   fontSize: "12px",
@@ -135,8 +135,8 @@ export default function NotesView({ onNote }: Props) {
                   className="font-sans text-[11px] px-3 py-1 rounded-full transition-colors"
                   style={{
                     background: filter === id ? "rgba(233,30,140,0.12)" : "transparent",
-                    color: filter === id ? "#C2185B" : "#9b8f7d",
-                    border: filter === id ? "1px solid rgba(233,30,140,0.25)" : "1px solid #ece4d3",
+                    color: filter === id ? "#C2185B" : "#8e8e93",
+                    border: filter === id ? "1px solid rgba(233,30,140,0.25)" : "1px solid #e5e5ea",
                   }}
                 >
                   {label}
@@ -158,8 +158,8 @@ export default function NotesView({ onNote }: Props) {
                 >
                   V
                 </div>
-                <div className="text-[12px]" style={{ color: "#9b8f7d" }}>
-                  Vio citește din mesajul lui <span className="font-medium" style={{ color: "#6e6657" }}>{typing.name}</span> din <span className="font-medium" style={{ color: "#6e6657" }}>{typing.city}</span>
+                <div className="text-[12px]" style={{ color: "#8e8e93" }}>
+                  Vio citește din mesajul lui <span className="font-medium" style={{ color: "#6e6e73" }}>{typing.name}</span> din <span className="font-medium" style={{ color: "#6e6e73" }}>{typing.city}</span>
                   <span className="ml-1.5 inline-flex gap-0.5 align-middle" style={{ color: "#E91E8C" }}>
                     <span className="typing-dot" />
                     <span className="typing-dot" />
@@ -175,11 +175,11 @@ export default function NotesView({ onNote }: Props) {
                   <div className="flex flex-col gap-1 max-w-[80%]">
                     <div className="flex items-center gap-2 px-1">
                       <span className="font-sans font-semibold text-[12px]" style={{ color: "#1a1820" }}>{note.from}</span>
-                      <span className="font-mono text-[10px]" style={{ color: "#9b8f7d" }}>{note.time}</span>
+                      <span className="font-mono text-[10px]" style={{ color: "#8e8e93" }}>{note.time}</span>
                     </div>
                     <div
                       className="rounded-2xl rounded-tl-md px-4 py-2.5"
-                      style={{ background: "#faf7f2", border: "1px solid #ece4d3" }}
+                      style={{ background: "#f5f5f7", border: "1px solid #e5e5ea" }}
                     >
                       <p className="font-serif text-[14.5px] italic leading-snug" style={{ color: "#3a3530" }}>{note.text}</p>
                     </div>
@@ -190,7 +190,7 @@ export default function NotesView({ onNote }: Props) {
                     <div className="flex justify-end gap-2">
                       <div className="flex flex-col gap-1 max-w-[80%] items-end">
                         <div className="flex items-center gap-2 px-1">
-                          <span className="font-mono text-[10px]" style={{ color: "#9b8f7d" }}>{note.time}</span>
+                          <span className="font-mono text-[10px]" style={{ color: "#8e8e93" }}>{note.time}</span>
                           <span className="font-sans font-semibold text-[12px]" style={{ color: "#C2185B" }}>Vio</span>
                         </div>
                         <div
@@ -211,7 +211,7 @@ export default function NotesView({ onNote }: Props) {
                 </div>
               ))}
               {filteredNotes.length === 0 && (
-                <div className="text-center py-10 font-sans text-[13px]" style={{ color: "#9b8f7d" }}>
+                <div className="text-center py-10 font-sans text-[13px]" style={{ color: "#8e8e93" }}>
                   Niciun mesaj cu acest filtru.
                 </div>
               )}
@@ -234,7 +234,7 @@ export default function NotesView({ onNote }: Props) {
                   </div>
                   <div>
                     <p className="font-sans font-semibold text-[16px]" style={{ color: "#1a1820" }}>Niciun bilet trimis.</p>
-                    <p className="font-sans text-[13px]" style={{ color: "#9b8f7d" }}>Trimite primul bilet lui Vio.</p>
+                    <p className="font-sans text-[13px]" style={{ color: "#8e8e93" }}>Trimite primul bilet lui Vio.</p>
                   </div>
                 </div>
               ) : (
@@ -242,7 +242,7 @@ export default function NotesView({ onNote }: Props) {
                   <div key={n.id} className="flex flex-col gap-1 max-w-[85%] animate-fade-in">
                     <div className="flex items-center gap-2 px-1">
                       <span className="font-sans font-semibold text-[12px]" style={{ color: "#1a1820" }}>Tu</span>
-                      <span className="font-mono text-[10px]" style={{ color: "#9b8f7d" }}>
+                      <span className="font-mono text-[10px]" style={{ color: "#8e8e93" }}>
                         {new Date(n.createdAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
                       </span>
                       <span className="ml-auto flex items-center gap-1.5">
@@ -252,7 +252,7 @@ export default function NotesView({ onNote }: Props) {
                     </div>
                     <div
                       className="rounded-2xl rounded-tl-md px-4 py-2.5"
-                      style={{ background: "#faf7f2", border: "1px solid #ece4d3" }}
+                      style={{ background: "#f5f5f7", border: "1px solid #e5e5ea" }}
                     >
                       <p className="font-serif text-[14.5px] italic leading-snug" style={{ color: "#3a3530" }}>{n.text}</p>
                     </div>
@@ -264,7 +264,7 @@ export default function NotesView({ onNote }: Props) {
         </div>
 
         {/* CTA */}
-        <div className="shrink-0 px-4 py-3" style={{ borderTop: "1px solid #e7dfd1" }}>
+        <div className="shrink-0 px-4 py-3" style={{ borderTop: "1px solid #e5e5ea" }}>
           <button
             onClick={onNote}
             className="w-full h-12 rounded-2xl font-sans text-[14px] font-semibold text-white flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"

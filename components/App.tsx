@@ -347,7 +347,7 @@ export default function App() {
                   </div>
                   <div>
                     <div className="font-sans font-bold text-[16px]" style={{ color: "#1a1820" }}>Pasează un bilet lui Vio</div>
-                    <div className="font-sans text-[11px] mt-0.5" style={{ color: "#9b8f7d" }}>poate fi citit live pe undă</div>
+                    <div className="font-sans text-[11px] mt-0.5" style={{ color: "#8e8e93" }}>poate fi citit live pe undă</div>
                   </div>
                 </div>
                 <textarea
@@ -360,13 +360,13 @@ export default function App() {
                   autoFocus
                 />
                 <div className="flex justify-between mb-5">
-                  <span className="font-sans text-[12px]" style={{ color: "#9b8f7d" }}>{noteText.length}/240</span>
+                  <span className="font-sans text-[12px]" style={{ color: "#8e8e93" }}>{noteText.length}/240</span>
                 </div>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowNote(false)}
                     className="flex-1 h-12 rounded-2xl font-sans text-[14px] font-medium"
-                    style={{ background: "#f7f1e6", color: "#6e6657", border: "1px solid #ece4d3" }}
+                    style={{ background: "#f5f5f7", color: "#6e6e73", border: "1px solid #e5e5ea" }}
                   >
                     Renunță
                   </button>
@@ -389,7 +389,7 @@ export default function App() {
                   V
                 </div>
                 <div className="font-sans font-bold text-[20px] mb-1" style={{ color: "#1a1820" }}>Vio l-a primit.</div>
-                <div className="font-sans text-[13px]" style={{ color: "#9b8f7d" }}>Ascultă unda. Poate te strigă.</div>
+                <div className="font-sans text-[13px]" style={{ color: "#8e8e93" }}>Ascultă unda. Poate te strigă.</div>
               </div>
             )}
           </div>

@@ -39,11 +39,11 @@ export default function LibraryView({ songs, voted, votes, onVote, currentSong, 
               </svg>
             </button>
             <h1 className="font-serif font-normal text-[24px] flex-1" style={{ color: "#1a1820" }}>Bibliotecă</h1>
-            <span className="font-mono text-[11px]" style={{ color: "#9b8f7d" }}>{songs.length} piese</span>
+            <span className="font-mono text-[11px]" style={{ color: "#8e8e93" }}>{songs.length} piese</span>
           </div>
           {/* Search */}
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9b8f7d" strokeWidth="2" strokeLinecap="round">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2" strokeLinecap="round">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
             <input
@@ -52,7 +52,7 @@ export default function LibraryView({ songs, voted, votes, onVote, currentSong, 
               value={query}
               onChange={e => setQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 rounded-2xl font-sans text-[14px] outline-none"
-              style={{ background: "#faf7f2", border: "1px solid #ece4d3", color: "#1a1820" }}
+              style={{ background: "#f5f5f7", border: "1px solid #e5e5ea", color: "#1a1820" }}
             />
           </div>
         </div>
@@ -60,7 +60,7 @@ export default function LibraryView({ songs, voted, votes, onVote, currentSong, 
         {/* Station list */}
         <div className="view-scroll">
           {visible.length === 0 && (
-            <div className="text-center py-16 font-sans text-[14px]" style={{ color: "#9b8f7d" }}>Nicio piesă găsită.</div>
+            <div className="text-center py-16 font-sans text-[14px]" style={{ color: "#8e8e93" }}>Nicio piesă găsită.</div>
           )}
 
           {visible.map((song, visIdx) => {

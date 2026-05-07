@@ -80,7 +80,7 @@ export default function ProfileView({
           </div>
 
           <div className="mt-7">
-            <div className="font-mono text-[10px] tracking-widest uppercase text-[#9b8f7d] mb-3">de ce un cont</div>
+            <div className="font-mono text-[10px] tracking-widest uppercase text-[#8e8e93] mb-3">de ce un cont</div>
             <ul className="flex flex-col gap-3">
               {[
                 { t: "Piesele tale", h: "salvate, votate, oricând la îndemână" },
@@ -92,7 +92,7 @@ export default function ProfileView({
                   <span className="w-2 h-2 mt-2 rounded-full" style={{ background: "#E91E8C" }} />
                   <div>
                     <div className="font-sans font-semibold text-[14px]" style={{ color: "#1a1820" }}>{p.t}</div>
-                    <div className="font-sans text-[12px]" style={{ color: "#6e6657" }}>{p.h}</div>
+                    <div className="font-sans text-[12px]" style={{ color: "#6e6e73" }}>{p.h}</div>
                   </div>
                 </li>
               ))}
@@ -202,14 +202,14 @@ export default function ProfileView({
           ].map(s => (
             <div key={s.l} className="rounded-2xl py-3 text-center" style={{ background: "#FCE4EC" }}>
               <div className="font-sans font-bold text-[20px]" style={{ color: "#C2185B" }}>{s.v}</div>
-              <div className="font-mono text-[10px] tracking-widest uppercase mt-0.5" style={{ color: "#9b8f7d" }}>{s.l}</div>
+              <div className="font-mono text-[10px] tracking-widest uppercase mt-0.5" style={{ color: "#8e8e93" }}>{s.l}</div>
             </div>
           ))}
         </div>
 
         {/* Sections */}
         <div className="px-5 pt-6 pb-2">
-          <div className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: "#9b8f7d" }}>cont</div>
+          <div className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: "#8e8e93" }}>cont</div>
           <ul className="flex flex-col gap-1">
             {[
               { l: "Piesele mele favorite", h: `${stats.favorites} salvate` },
@@ -220,9 +220,9 @@ export default function ProfileView({
                 <button className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:bg-pink-50 transition-colors">
                   <div className="flex-1 min-w-0">
                     <div className="font-sans font-semibold text-[14px]" style={{ color: "#1a1820" }}>{row.l}</div>
-                    <div className="font-sans text-[11px]" style={{ color: "#9b8f7d" }}>{row.h}</div>
+                    <div className="font-sans text-[11px]" style={{ color: "#8e8e93" }}>{row.h}</div>
                   </div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#cfc6b4" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#c7c7cc" }}>
                     <path d="M9 6l6 6-6 6"/>
                   </svg>
                 </button>
@@ -232,7 +232,7 @@ export default function ProfileView({
         </div>
 
         <div className="px-5 pt-4 pb-2">
-          <div className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: "#9b8f7d" }}>setări</div>
+          <div className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: "#8e8e93" }}>setări</div>
           <ul className="flex flex-col gap-1">
             {[
               { l: "Notificări", h: "când Vio îți citește biletul" },
@@ -244,9 +244,9 @@ export default function ProfileView({
                 <button className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:bg-pink-50 transition-colors">
                   <div className="flex-1 min-w-0">
                     <div className="font-sans font-semibold text-[14px]" style={{ color: "#1a1820" }}>{row.l}</div>
-                    <div className="font-sans text-[11px]" style={{ color: "#9b8f7d" }}>{row.h}</div>
+                    <div className="font-sans text-[11px]" style={{ color: "#8e8e93" }}>{row.h}</div>
                   </div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#cfc6b4" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#c7c7cc" }}>
                     <path d="M9 6l6 6-6 6"/>
                   </svg>
                 </button>

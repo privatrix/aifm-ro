@@ -38,9 +38,9 @@ export default function TopView({ songs, voted, votes, onVote, currentSong, onPl
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-serif font-normal text-[24px]" style={{ color: "#1a1820" }}>Top Voturi</h1>
-              <div className="font-mono text-[10px] tracking-wider" style={{ color: "#9b8f7d" }}>CELE MAI VOTATE ÎN ULTIMELE 24H</div>
+              <div className="font-mono text-[10px] tracking-wider" style={{ color: "#8e8e93" }}>CELE MAI VOTATE ÎN ULTIMELE 24H</div>
             </div>
-            <div className="flex gap-1 p-1 rounded-full" style={{ background: "#ece4d3" }}>
+            <div className="flex gap-1 p-1 rounded-full" style={{ background: "#e5e5ea" }}>
               {([["saptamana", "Săptămâna"], ["toate", "Toate"]] as [Period, string][]).map(([id, label]) => (
                 <button
                   key={id}
@@ -72,7 +72,7 @@ export default function TopView({ songs, voted, votes, onVote, currentSong, onPl
               <div
                 key={song.id}
                 className="flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors"
-                style={{ borderBottom: "1px solid #e7dfd1" }}
+                style={{ borderBottom: "1px solid #e5e5ea" }}
                 onClick={() => onPlay(songs.findIndex(s => s.id === song.id))}
               >
                 {/* Color bar */}
@@ -106,10 +106,10 @@ export default function TopView({ songs, voted, votes, onVote, currentSong, onPl
                     >
                       {song.genre}
                     </span>
-                    <span className="font-sans text-[11px]" style={{ color: "#9b8f7d" }}>{song.duration}</span>
+                    <span className="font-sans text-[11px]" style={{ color: "#8e8e93" }}>{song.duration}</span>
                   </div>
                   {/* Vote bar */}
-                  <div className="h-[2px] rounded-full" style={{ background: "#e7dfd1" }}>
+                  <div className="h-[2px] rounded-full" style={{ background: "#e5e5ea" }}>
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${pct}%`, background: `linear-gradient(to right, ${song.gradient[0]}, ${song.gradient[1]})` }}

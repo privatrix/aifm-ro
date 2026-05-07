@@ -5,7 +5,7 @@
 :root {
   color-scheme: dark;
   /* Updated by RadioView when the active song changes. */
-  --accent-from: #c47626;
+  --accent-from: #E91E8C;
   --accent-to: #6A1B9A;
 }
 html, body { height: 100%; }
@@ -13,7 +13,7 @@ body {
   font-family: var(--font-sans);
   position: fixed; inset: 0;
   overflow: hidden;
-  color: #ece7d8;
+  color: #f2f2f4;
   background:
     radial-gradient(70% 55% at 50% -5%,
       color-mix(in srgb, var(--accent-from) 28%, transparent) 0%,
@@ -107,7 +107,7 @@ body::after {
 }
 .white-header {
   padding: 16px 20px 12px;
-  border-bottom: 1px solid #f1ebe0;
+  border-bottom: 1px solid #ececef;
   flex-shrink: 0;
 }
 
@@ -135,7 +135,7 @@ body::after {
 /* ── Nav (white bottom bar) ── */
 .bottom-nav {
   background: #ffffff;
-  border-top: 1px solid #f1ebe0;
+  border-top: 1px solid #ececef;
   box-shadow: 0 -2px 16px rgba(0,0,0,0.10);
   display: flex;
 }
@@ -149,8 +149,8 @@ body::after {
   color: #1a1820;
 }
 .note-textarea {
-  background: #faf7f2;
-  border: 1.5px solid #ece4d3;
+  background: #f5f5f7;
+  border: 1.5px solid #e5e5ea;
   border-radius: 14px;
   padding: 14px;
   font-size: 15px;
@@ -185,8 +185,8 @@ body::after {
   border: none;
 }
 .pill-inactive {
-  background: #ece4d3;
-  color: #6e6657;
+  background: #e5e5ea;
+  color: #6e6e73;
   border: none;
 }
 
