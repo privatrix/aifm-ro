@@ -31,7 +31,9 @@ export async function POST(req: NextRequest) {
 
   let payload: {
     songId?: number | null;
+    songUrl?: string | null;
     title?: string | null;
+    artist?: string | null;
     startedAt?: string | null;
     elapsedSeconds?: number | null;
     bytesSent?: number;
@@ -43,7 +45,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 });
   }
 
-  const songId = typeof payload.songId === "number" ? payload.songId : null;
+  let songId = typeof payload.songId === "number" ? payload.songId : null;
+  // Liquidsoap's heartbeat sends songUrl (or title), not songId. Resolve it.
+  if (songId === null && (payload.songUrl || payload.title)) {
+    try {
+      if (payload.songUrl) {
+        const rows = await db.select({ id: songs.id }).from(songs).where(eq(songs.fileUrl, payload.songUrl));
+        if (rows[0]) songId = rows[0].id;
+      }
+      if (songId === null && payload.title) {
+        const rows = await db.select({ id: songs.id }).from(songs).where(eq(songs.title, payload.title));
+        if (rows[0]) songId = rows[0].id;
+      }
+    } catch (err) {
+      console.warn("[heartbeat] song lookup failed:", (err as Error).message);
+    }
+  }
   const startedAt = payload.startedAt ? new Date(payload.startedAt) : new Date();
   const heartbeatAt = new Date();
 
