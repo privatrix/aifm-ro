@@ -103,32 +103,32 @@ export default function App() {
     ? (nowPlaying?.current ?? songs[0])
     : songs[soloIdx];
 
+  /**
+   * Live broadcast URL the current browser can decode. Computed once we have
+   * an <audio> element so we can ask `canPlayType`. Memoised so we don't
+   * resolve a new value on every render.
+   */
+  const resolveLiveUrl = useCallback((): string => {
+    const a = audioRef.current;
+    const opusUrl = process.env.NEXT_PUBLIC_STREAM_URL || "";
+    const mp3Url = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
+    if (!a) return opusUrl || mp3Url;
+    const opusOk = a.canPlayType('audio/ogg; codecs="opus"') === "probably"
+      || a.canPlayType("audio/ogg; codecs=opus") === "probably";
+    if (mp3Url && (!opusOk || !opusUrl)) return mp3Url;
+    return opusUrl || mp3Url;
+  }, []);
+
   // 4. Sync audio src.
   //
   // Live mode: point at the Icecast broadcast URL. Every listener gets the
   // exact same bytes from the same offset — a true live radio stream.
   // Solo mode: per-song fileUrl from the catalogue.
-  //
-  // Format selection: Safari/iOS can't decode Opus in <audio>, so we fall
-  // back to the MP3 mount on those browsers. Detection is via canPlayType.
-  //
-  // NEXT_PUBLIC_STREAM_URL is the Opus URL. NEXT_PUBLIC_STREAM_URL_MP3, when
-  // set, is the MP3 fallback. If only one is set we use that.
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
 
-    const opusUrl = process.env.NEXT_PUBLIC_STREAM_URL || "";
-    const mp3Url = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
-    let liveUrl = opusUrl;
-    if (mp3Url) {
-      // Treat any browser that doesn't "probably" play Opus-in-Ogg as MP3-only.
-      // canPlayType returns "", "maybe", or "probably". Safari returns "".
-      const opusOk = a.canPlayType('audio/ogg; codecs="opus"') === "probably"
-        || a.canPlayType("audio/ogg; codecs=opus") === "probably";
-      if (!opusOk || !opusUrl) liveUrl = mp3Url;
-    }
-
+    const liveUrl = resolveLiveUrl();
     if (liveMode && liveUrl) {
       if (a.src !== liveUrl) {
         a.src = liveUrl;
@@ -142,43 +142,38 @@ export default function App() {
     if (a.src === currentSong.fileUrl) return;
     a.src = currentSong.fileUrl;
     a.load();
-  }, [currentSong?.id, currentSong?.fileUrl, liveMode, nowPlaying?.startedAt]);
+  }, [currentSong?.id, currentSong?.fileUrl, liveMode, nowPlaying?.startedAt, resolveLiveUrl]);
 
   // 5. Play/pause based on `playing`.
   //
-  // Live mode: "pause" must NOT actually pause — the broadcast keeps moving
-  // and we'd fall behind. Mute instead, audio keeps flowing in the
-  // background, and "play" just unmutes. Real-radio behaviour.
-  //
-  // Solo mode: regular pause/resume.
+  // Both live and solo modes use real <audio> play/pause. iOS Safari requires
+  // play() to be called within a user gesture stack, which we get because
+  // setPlaying(true) is fired from a click handler. We don't try to keep the
+  // stream running while "paused" — iOS would mute it anyway and fight us
+  // with its lock-screen / Now Playing UI.
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
-    const liveUrl = process.env.NEXT_PUBLIC_STREAM_URL || "";
-    const isLive = liveMode && !!liveUrl;
 
-    if (isLive) {
-      // Always trying to play (live) — toggle muted with the user's intent.
-      a.muted = !playing;
-      if (a.paused) {
-        const p = a.play();
-        if (p && typeof p.catch === "function") {
-          // If autoplay is blocked, surface that as paused so user can tap.
-          p.catch(() => setPlaying(false));
-        }
-      }
-      return;
-    }
-
-    // Solo mode: regular play/pause.
     a.muted = false;
-    if (playing && currentSong?.fileUrl) {
+    if (playing) {
       const p = a.play();
       if (p && typeof p.catch === "function") {
-        p.catch(() => setPlaying(false));
+        p.catch((err) => {
+          // Autoplay blocked or src not ready — reset state so the user can
+          // tap again. iOS commonly throws NotAllowedError here.
+          console.warn("[audio] play() rejected:", err?.name, err?.message);
+          setPlaying(false);
+        });
       }
     } else {
       a.pause();
+      // For live mode, also reload to drop the buffered tail so next play()
+      // starts from the live edge. Without this, the user resumes seconds
+      // behind broadcast.
+      if (liveMode) {
+        try { a.load(); } catch {}
+      }
     }
   }, [playing, liveMode, currentSong?.id, currentSong?.fileUrl]);
 
