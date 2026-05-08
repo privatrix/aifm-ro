@@ -26,6 +26,8 @@ interface Props {
   onOpenFavorites?: () => void;
   onOpenNotes?: () => void;
   onOpenHistory?: () => void;
+  onChangePassword?: () => void;
+  onOpenPrivacy?: () => void;
 }
 
 const DEFAULT_STATS: Stats = { favorites: 0, notes: 0, hoursListened: 0 };
@@ -33,6 +35,7 @@ const DEFAULT_STATS: Stats = { favorites: 0, notes: 0, hoursListened: 0 };
 export default function ProfileView({
   user, stats = DEFAULT_STATS, onSignIn, onSignUp, onSignOut, onSave,
   onOpenFavorites, onOpenNotes, onOpenHistory,
+  onChangePassword, onOpenPrivacy,
 }: Props) {
 
   const [editing, setEditing] = useState(false);
@@ -239,13 +242,11 @@ export default function ProfileView({
           <div className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: "#8e8e93" }}>setări</div>
           <ul className="flex flex-col gap-1">
             {[
-              { l: "Notificări", h: "când Vio îți citește biletul" },
-              { l: "Limbă", h: "Română" },
-              { l: "Temă", h: "automată" },
-              { l: "Confidențialitate", h: "datele tale" },
+              { l: "Schimbă parola", h: "actualizează parola contului", on: onChangePassword },
+              { l: "Confidențialitate", h: "datele tale", on: onOpenPrivacy },
             ].map(row => (
               <li key={row.l}>
-                <button className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:bg-pink-50 transition-colors">
+                <button onClick={row.on} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:bg-pink-50 transition-colors">
                   <div className="flex-1 min-w-0">
                     <div className="font-sans font-semibold text-[14px]" style={{ color: "#1a1820" }}>{row.l}</div>
                     <div className="font-sans text-[11px]" style={{ color: "#8e8e93" }}>{row.h}</div>

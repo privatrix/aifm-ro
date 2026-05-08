@@ -9,6 +9,7 @@ import MenuDrawer from "./MenuDrawer";
 import ProfileView from "./ProfileView";
 import ProfileDetailView, { type DetailMode } from "./ProfileDetailView";
 import AuthSheet, { type AuthMode, type AuthUser } from "./AuthSheet";
+import ChangePasswordSheet from "./ChangePasswordSheet";
 import { useLiveAudio } from "./useLiveAudio";
 
 type Tab = "radio" | "biblioteca" | "bilete" | "profile";
@@ -51,6 +52,7 @@ export default function App() {
   const [stats, setStats] = useState({ favorites: 0, notes: 0, hoursListened: 0 });
   const [authMode, setAuthMode] = useState<AuthMode>("off");
   const [profileDetail, setProfileDetail] = useState<DetailMode | null>(null);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   // Set of song ids the signed-in user has favorited. Drives the heart icon
   // throughout the UI in addition to the existing anonymous vote toggle.
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
@@ -527,6 +529,7 @@ export default function App() {
             onOpenFavorites={() => setProfileDetail("favorites")}
             onOpenNotes={() => setProfileDetail("notes")}
             onOpenHistory={() => setProfileDetail("history")}
+            onChangePassword={() => setChangePasswordOpen(true)}
           />
         )}
       </div>
@@ -626,6 +629,10 @@ export default function App() {
         onClose={() => setAuthMode("off")}
         onSuccess={onAuthSuccess}
         onSwitchMode={(m) => setAuthMode(m)}
+      />
+      <ChangePasswordSheet
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
       />
     </div>
   );
