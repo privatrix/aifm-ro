@@ -4,6 +4,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { db } from "@/db";
 import { notes } from "@/db/schema";
 import { currentUser } from "@/lib/require-user";
+import { processPendingNotes } from "@/lib/vio-llm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,17 +38,32 @@ export async function POST(req: NextRequest) {
       status: "pending",
       timeLabel: new Date().toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" }),
       userId: user?.id ?? null,
+      // Bilete are read on air by default. The radio concept is that Vio
+      // reads listeners' postcards live; making them public matches the show.
+      public: true,
     })
     .returning();
+
+  // Kick the LLM processor right after insert so the user doesn't have to wait
+  // for the next cron tick (up to 2 minutes). We don't await it — fire and
+  // forget. Vercel keeps the function warm long enough for it to finish.
+  // The processor itself is idempotent (only acts on status='pending'), so a
+  // racing cron tick won't double-reply.
+  if (process.env.ANTHROPIC_API_KEY) {
+    void processPendingNotes(3).catch(() => { /* swallow; cron retries */ });
+  }
+
   return NextResponse.json({ ok: true, note: { id: row.id } });
 }
 
-// Public-readable note thread: notes that are read AND public.
+// Public-readable note thread: notes Vio has read AND that are flagged
+// public. New bilete default to public=true on insert (the radio concept is
+// that Vio reads listeners' postcards live). Admin can flip the flag.
 export async function GET() {
   const rows = await db
     .select()
     .from(notes)
-    .where(and(eq(notes.public, true), eq(notes.status, "read")))
+    .where(and(eq(notes.status, "read"), eq(notes.public, true)))
     .orderBy(desc(notes.createdAt))
     .limit(40);
   return NextResponse.json({

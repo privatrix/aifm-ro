@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { VIO_NOTES as MOCK_NOTES, VioNote } from "@/lib/data";
+import { type VioNote } from "@/lib/data";
 
 interface Props {
   onNote: () => void;
@@ -72,7 +72,8 @@ export default function NotesView({ onNote }: Props) {
     return () => { cancelled = true; };
   }, []);
 
-  const sourceNotes: VioNote[] = serverNotes && serverNotes.length > 0 ? serverNotes : MOCK_NOTES;
+  // Real data only — we removed the mock fallback. Empty list = empty state.
+  const sourceNotes: VioNote[] = serverNotes ?? [];
 
   // Load my notes. For signed-in users, poll the API every 6 seconds while
   // the bilete tab is visible so Vio's reply appears within a tick of the
@@ -153,6 +154,9 @@ export default function NotesView({ onNote }: Props) {
   }, [filter, sourceNotes]);
 
   // Prefer a real note name if we have any, else random fictional pool.
+  // Typing indicator pool: prefer real listener names, fall back to a few
+  // friendly placeholder cities so the UI doesn't look broken when there are
+  // no public bilete yet.
   const typingPool = sourceNotes.length > 0
     ? sourceNotes.map(n => {
         const parts = (n.from || "").split(",").map(s => s.trim()).filter(Boolean);
@@ -160,6 +164,7 @@ export default function NotesView({ onNote }: Props) {
       })
     : TYPING_POOL;
   const typing = typingPool[typingIdx % Math.max(1, typingPool.length)];
+  const showEmptyPublic = serverNotes !== null && serverNotes.length === 0;
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -282,8 +287,25 @@ export default function NotesView({ onNote }: Props) {
                 </div>
               ))}
               {filteredNotes.length === 0 && (
-                <div className="text-center py-10 font-sans text-[13px]" style={{ color: "#8e8e93" }}>
-                  Niciun mesaj cu acest filtru.
+                <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+                  <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                    style={{ background: "linear-gradient(135deg, #FCE4EC, #F8BBD0)" }}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E91E8C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                    </svg>
+                  </div>
+                  <div className="font-sans text-[13px]" style={{ color: "#8e8e93" }}>
+                    {showEmptyPublic
+                      ? "Încă niciun bilet citit pe undă."
+                      : "Niciun mesaj cu acest filtru."}
+                  </div>
+                  {showEmptyPublic && (
+                    <div className="font-sans text-[12px]" style={{ color: "#bcbcc1" }}>
+                      Trimite primul bilet — Vio îți răspunde.
+                    </div>
+                  )}
                 </div>
               )}
               <div className="text-center py-4 font-mono text-[10px] tracking-wider" style={{ color: "#bcb19a" }}>
