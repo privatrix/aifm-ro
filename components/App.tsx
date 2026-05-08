@@ -321,7 +321,13 @@ export default function App() {
       if (p && typeof p.catch === "function") {
         p.catch((err) => {
           console.warn("[audio] play() rejected:", err?.name, err?.message);
-          setPlaying(false);
+          // Only flip the UI to paused if the rejection was due to lack of
+          // user gesture (NotAllowedError). For NotSupportedError or aborts,
+          // keep "playing" intent set so hls.js / MP3 fallback can take over
+          // and the audio element will start playing once it has a source.
+          if (err?.name === "NotAllowedError") {
+            setPlaying(false);
+          }
         });
       }
       // Log audio element errors but DO NOT auto-pause the UI. hls.js performs
@@ -476,7 +482,19 @@ export default function App() {
         ref={audioRef}
         onEnded={handleAudioEnded}
         onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
+        onPause={(e) => {
+          // Only reflect pauses that came from the user (or the play() promise
+          // rejected). Some Android browsers + hls.js fire spurious `pause`
+          // events while attaching the MediaSource — BEFORE any audio ever
+          // played. Treating those as "user paused" causes the play button to
+          // flip back to pause instantly. We detect this by checking whether
+          // the element ever produced any audio (currentTime > 0). If it has
+          // never started, ignore the pause event.
+          const a = e.currentTarget as HTMLAudioElement;
+          if (a.currentTime > 0 || a.played?.length) {
+            setPlaying(false);
+          }
+        }}
         preload="auto"
         playsInline
         crossOrigin="anonymous"
