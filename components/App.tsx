@@ -311,6 +311,28 @@ export default function App() {
       if (a.src !== url) {
         a.src = url;
         a.load();
+        // Pre-warm the connection: trigger play() then immediately pause()
+        // so the audio element starts buffering bytes from Icecast before
+        // the user actually hits play. When they do, audio is already there
+        // and starts within ~200ms instead of 2-4 seconds.
+        // Browsers without autoplay permission will reject this silently —
+        // that's fine, the user-gesture play() later still works.
+        try {
+          a.muted = true;
+          const pre = a.play();
+          if (pre && typeof pre.then === "function") {
+            pre.then(() => {
+              a.pause();
+              a.muted = false;
+              dlog("prewarm OK");
+            }).catch(() => {
+              a.muted = false;
+              dlog("prewarm blocked (autoplay denied) - normal");
+            });
+          } else {
+            a.muted = false;
+          }
+        } catch {}
       }
       return;
     }
