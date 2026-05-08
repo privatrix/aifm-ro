@@ -152,9 +152,21 @@ export default function App() {
     const hls = process.env.NEXT_PUBLIC_STREAM_URL_HLS || "";
     const mp3 = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
     const opus = process.env.NEXT_PUBLIC_STREAM_URL || "";
-    if (hls) return { url: hls, kind: "hls" };
+    // Use HLS only on browsers that play it natively (iOS Safari).
+    // Everywhere else, serve MP3 directly. hls.js on Android Chrome's
+    // MediaSource has codec-compat quirks (ID3 PIDs, mp4a.40.2 in MPEG-TS)
+    // that produce a silent "playing" element on some device/version combos.
+    // MP3 over Icecast is a single, well-trodden path that just works.
+    const isAppleNative = typeof document !== "undefined" && (() => {
+      try {
+        const probe = document.createElement("audio");
+        return probe.canPlayType("application/vnd.apple.mpegurl") !== "";
+      } catch { return false; }
+    })();
+    if (hls && isAppleNative) return { url: hls, kind: "hls" };
     if (mp3) return { url: mp3, kind: "mp3" };
-    return { url: opus, kind: "opus" };
+    if (opus) return { url: opus, kind: "opus" };
+    return { url: hls, kind: "hls" };
   }, []);
 
   // 4. Sync audio src.
