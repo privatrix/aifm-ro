@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { SONGS as MOCK_SONGS, type Song } from "@/lib/data";
 import Nav from "./Nav";
 import RadioView from "./RadioView";
@@ -7,6 +7,7 @@ import LibraryView from "./LibraryView";
 import NotesView from "./NotesView";
 import MenuDrawer from "./MenuDrawer";
 import ProfileView from "./ProfileView";
+import { useLiveAudio } from "./useLiveAudio";
 
 type Tab = "radio" | "biblioteca" | "bilete" | "profile";
 
@@ -41,19 +42,6 @@ export default function App() {
   const [listenerCount, setListenerCount] = useState<number | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  // On-screen debug log (visible when ?debug=1 is in the URL). Helps catch
-  // mobile-only audio bugs where DevTools isn't accessible.
-  const [debugLines, setDebugLines] = useState<string[]>([]);
-  const debugEnabled = typeof window !== "undefined"
-    && window.location.search.includes("debug=1");
-  const dlog = useCallback((msg: string) => {
-    if (!debugEnabled) return;
-    setDebugLines(prev => {
-      const stamped = `${new Date().toISOString().slice(11, 23)} ${msg}`;
-      const next = [...prev, stamped];
-      return next.length > 30 ? next.slice(-30) : next;
-    });
-  }, [debugEnabled]);
 
   // 1. Pull catalog
   useEffect(() => {
@@ -142,268 +130,36 @@ export default function App() {
     ? (nowPlaying?.current ?? songs[0])
     : songs[soloIdx];
 
-  /**
-   * Live broadcast URL the current browser can decode. Computed once we have
-   * an <audio> element so we can ask `canPlayType`. Memoised so we don't
-   * resolve a new value on every render.
-   */
-  /** Track the active hls.js instance so we can tear it down on src changes. */
-  const hlsRef = useRef<{ destroy: () => void } | null>(null);
+  // Live broadcast source URLs. The hook picks the right one for the browser.
+  const liveUrls = useMemo(() => ({
+    hls:  process.env.NEXT_PUBLIC_STREAM_URL_HLS || "",
+    mp3:  process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "",
+    opus: process.env.NEXT_PUBLIC_STREAM_URL || "",
+  }), []);
 
-  /**
-   * Decide which live stream URL to use for this browser:
-   *   1. NEXT_PUBLIC_STREAM_URL_HLS — chunked HLS (works on every browser,
-   *      survives carrier-grade NATs, plays through hls.js or natively on
-   *      Safari). Default if set.
-   *   2. NEXT_PUBLIC_STREAM_URL_MP3 — Icecast MP3 mount.
-   *   3. NEXT_PUBLIC_STREAM_URL    — Icecast Opus mount.
-   *
-   * Returns both the URL and a `kind` so the audio sync effect knows whether
-   * it has to bring up hls.js for non-Safari browsers.
-   */
-  const resolveLiveUrl = useCallback((): { url: string; kind: "hls" | "mp3" | "opus" } => {
-    const hls = process.env.NEXT_PUBLIC_STREAM_URL_HLS || "";
-    const mp3 = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
-    const opus = process.env.NEXT_PUBLIC_STREAM_URL || "";
-    // Just use MP3 everywhere. iOS Safari + our HLS segments produces
-    // DEMUXER_ERROR_COULD_NOT_PARSE (likely the timed_id3 data stream
-    // Liquidsoap embeds in MPEG-TS), and Android Chrome with hls.js has
-    // its own MediaSource quirks. MP3 over Icecast is the boring path that
-    // works on every browser. We keep HLS as a last-resort fallback only
-    // if MP3 isn't configured.
-    if (mp3) return { url: mp3, kind: "mp3" };
-    if (opus) return { url: opus, kind: "opus" };
-    return { url: hls, kind: "hls" };
-  }, []);
+  // Wire the audio element to live mode. The hook owns: source URL pick,
+  // play()/pause(), and HLS live-edge tracking. It does NOT own onPlay/onPause
+  // events on the element — those flow through the JSX handlers below so the
+  // mapping from "audio element state" to "playing UI state" stays explicit
+  // and visible.
+  useLiveAudio({
+    audioRef,
+    enabled: liveMode,
+    playing,
+    urls: liveUrls,
+    onPlayFail: () => setPlaying(false),
+  });
 
-  // 4. Sync audio src.
-  //
-  // Live mode: point at the broadcast URL. HLS is preferred and uses hls.js
-  // on browsers that don't natively support it (everything except Safari).
-  // Solo mode: per-song fileUrl from the catalogue.
+  // Solo-mode source assignment. Live mode is handled by useLiveAudio above.
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
-
-    // Tear down any previous hls.js attachment when src needs to change.
-    const cleanupHls = () => {
-      if (hlsRef.current) {
-        try { hlsRef.current.destroy(); } catch {}
-        hlsRef.current = null;
-      }
-    };
-
-    if (liveMode) {
-      const { url, kind } = resolveLiveUrl();
-      if (!url) return;
-
-      if (kind === "hls") {
-        const safariNative = a.canPlayType("application/vnd.apple.mpegurl") !== "";
-        if (safariNative) {
-          cleanupHls();
-          if (a.src !== url) {
-            a.src = url;
-            a.load();
-          }
-          // iOS Safari treats HLS as a seekable timeline: when the network
-          // blips it pauses, buffers, then resumes at the same offset —
-          // listeners drift further and further behind live. Detect stalls
-          // (waiting/stalled events) and recovery (playing) and seek to the
-          // live edge each time so the listener stays on the broadcast.
-          const seekToLive = () => {
-            try {
-              const r = a.seekable;
-              if (r && r.length > 0) {
-                const liveEdge = r.end(r.length - 1);
-                // Stay 2s behind the very edge to keep a small buffer.
-                const target = Math.max(liveEdge - 2, 0);
-                if (target > a.currentTime + 1.5) {
-                  a.currentTime = target;
-                }
-              }
-            } catch {}
-          };
-          a.addEventListener("loadedmetadata", seekToLive);
-          a.addEventListener("playing", seekToLive);
-          a.addEventListener("waiting", seekToLive);
-          a.addEventListener("stalled", seekToLive);
-          // Also re-seek every 30s in case neither event fires after drift.
-          const t = setInterval(seekToLive, 30000);
-          // Stash cleanup handle as a fake "hlsRef" so the next src-change can
-          // dispose it.
-          hlsRef.current = {
-            destroy: () => {
-              clearInterval(t);
-              a.removeEventListener("loadedmetadata", seekToLive);
-              a.removeEventListener("playing", seekToLive);
-              a.removeEventListener("waiting", seekToLive);
-              a.removeEventListener("stalled", seekToLive);
-            },
-          };
-          return;
-        }
-        // Non-Safari: use hls.js. Lazy-load to keep the bundle small.
-        cleanupHls();
-        // Clear any existing src so the audio element doesn't try to play it.
-        if (a.src && a.src !== "") { a.removeAttribute("src"); a.load(); }
-        const fallbackToMp3 = (reason: string) => {
-          const mp3 = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
-          console.warn("[audio] HLS failed, falling back to MP3:", reason);
-          if (!mp3) return;
-          if (hlsRef.current) {
-            try { hlsRef.current.destroy(); } catch {}
-            hlsRef.current = null;
-          }
-          if (a.src !== mp3) {
-            a.src = mp3;
-            a.load();
-          }
-        };
-        void import("hls.js").then(({ default: Hls }) => {
-          if (!Hls.isSupported()) {
-            fallbackToMp3("hls.js not supported");
-            return;
-          }
-          // Generous client-side buffer so transient mobile-network jitter
-          // (especially on roaming) can't underrun the player.
-          // - maxBufferLength: how much audio to keep buffered ahead
-          // - maxMaxBufferLength: hard ceiling
-          // - liveSyncDurationCount: how many segments to stay behind live edge
-          //   (3 = ~6s on 2s segments; safe against jitter, still feels live)
-          const hls = new Hls({
-            lowLatencyMode: false,
-            backBufferLength: 0,
-            maxBufferLength: 30,
-            maxMaxBufferLength: 60,
-            liveSyncDurationCount: 3,
-            liveMaxLatencyDurationCount: 10,
-            // Aggressive recovery from network blips.
-            fragLoadingMaxRetry: 6,
-            manifestLoadingMaxRetry: 6,
-            levelLoadingMaxRetry: 6,
-          });
-          // Fall back to MP3 on any fatal HLS error. hls.js can recover from
-          // most transient blips on its own, but if recovery fails (or the
-          // platform's MediaSource implementation rejects the segments — the
-          // exact failure mode some Android Chrome builds hit), we need an
-          // alternative source so the user gets audio.
-          hls.on(Hls.Events.ERROR, (_e: unknown, data: { fatal?: boolean; type?: string; details?: string }) => {
-            if (!data?.fatal) return;
-            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-              try { hls.startLoad(); return; } catch {}
-            }
-            if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-              try { hls.recoverMediaError(); return; } catch {}
-            }
-            fallbackToMp3(`fatal ${data.type ?? "?"}/${data.details ?? "?"}`);
-          });
-          hls.loadSource(url);
-          hls.attachMedia(a);
-          hlsRef.current = hls;
-        }).catch(err => {
-          fallbackToMp3(`hls.js import: ${err?.message ?? err}`);
-        });
-        return;
-      }
-
-      // mp3 / opus: simple <audio src=…>
-      cleanupHls();
-      if (a.src !== url) {
-        a.src = url;
-        a.load();
-        // Pre-warm the connection: trigger play() then immediately pause()
-        // so the audio element starts buffering bytes from Icecast before
-        // the user actually hits play. When they do, audio is already there
-        // and starts within ~200ms instead of 2-4 seconds.
-        // Browsers without autoplay permission will reject this silently —
-        // that's fine, the user-gesture play() later still works.
-        try {
-          a.muted = true;
-          const pre = a.play();
-          if (pre && typeof pre.then === "function") {
-            pre.then(() => {
-              a.pause();
-              a.muted = false;
-              dlog("prewarm OK");
-            }).catch(() => {
-              a.muted = false;
-              dlog("prewarm blocked (autoplay denied) - normal");
-            });
-          } else {
-            a.muted = false;
-          }
-        } catch {}
-      }
-      return;
-    }
-
-    // Solo mode.
-    cleanupHls();
+    if (liveMode) return;
     if (!currentSong?.fileUrl) return;
     if (a.src === currentSong.fileUrl) return;
     a.src = currentSong.fileUrl;
     a.load();
-  }, [currentSong?.id, currentSong?.fileUrl, liveMode, nowPlaying?.startedAt, resolveLiveUrl]);
-
-  // 5. Play/pause based on `playing`.
-  //
-  // Both live and solo modes use real <audio> play/pause. iOS Safari requires
-  // play() to be called within a user gesture stack, which we get because
-  // setPlaying(true) is fired from a click handler. We don't try to keep the
-  // stream running while "paused" — iOS would mute it anyway and fight us
-  // with its lock-screen / Now Playing UI.
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-
-    a.muted = false;
-    if (playing) {
-      dlog(`play() called src=${a.src ? a.src.slice(-30) : "(none)"} rs=${a.readyState} ns=${a.networkState}`);
-      const p = a.play();
-      if (p && typeof p.catch === "function") {
-        p.catch((err) => {
-          console.warn("[audio] play() rejected:", err?.name, err?.message);
-          dlog(`play() REJECTED ${err?.name}: ${err?.message ?? ""}`);
-          // Only flip the UI to paused if the rejection was due to lack of
-          // user gesture (NotAllowedError). For NotSupportedError or aborts,
-          // keep "playing" intent set so hls.js / MP3 fallback can take over
-          // and the audio element will start playing once it has a source.
-          if (err?.name === "NotAllowedError") {
-            setPlaying(false);
-          }
-        });
-        if (typeof p.then === "function") {
-          p.then(() => dlog(`play() RESOLVED`));
-        }
-      }
-      // Log audio element errors but DO NOT auto-pause the UI. hls.js performs
-      // its own recovery (and we have an MP3 fallback wired into its error
-      // handler), so flipping the UI to pause on the first transient error
-      // event makes the button bounce back to pause before audio actually
-      // arrives — the bug some Android browsers hit.
-      const onError = () => {
-        const e = a.error;
-        console.warn("[audio] element error:", e?.code, e?.message);
-        dlog(`element error code=${e?.code} msg=${e?.message ?? ""}`);
-      };
-      a.addEventListener("error", onError, { once: true });
-      const onCanPlay = () => dlog(`canplay rs=${a.readyState}`);
-      a.addEventListener("canplay", onCanPlay, { once: true });
-      const onPlaying = () => dlog(`playing event ct=${a.currentTime.toFixed(2)}`);
-      a.addEventListener("playing", onPlaying, { once: true });
-      const onStalled = () => console.warn("[audio] stalled (network slowed)");
-      a.addEventListener("stalled", onStalled, { once: true });
-    } else {
-      a.pause();
-      // NOTE: We used to call a.load() here in live mode to drop the buffered
-      // tail and resume at the live edge. That works on iOS but breaks Android
-      // Chrome's Icecast handling — the next play() sometimes can't
-      // re-establish the stream and silently fails. The cost of NOT reloading
-      // is that the user resumes a few seconds behind live (whatever was
-      // buffered when they paused). That's a minor inconvenience vs. the
-      // alternative of pause-and-can't-resume. Keep it simple.
-    }
-  }, [playing, liveMode, currentSong?.id, currentSong?.fileUrl]);
+  }, [currentSong?.fileUrl, liveMode]);
 
   // Vote handler (with API call)
   const toggleVote = useCallback(async (id: number) => {
@@ -530,27 +286,26 @@ export default function App() {
 
   return (
     <div className="app-shell flex flex-col">
-      {debugEnabled && (
-        <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:9999,maxHeight:"40vh",overflow:"auto",background:"rgba(0,0,0,0.85)",color:"#0f0",fontFamily:"monospace",fontSize:10,padding:6,lineHeight:1.3}}>
-          {debugLines.map((l,i) => <div key={i}>{l}</div>)}
-        </div>
-      )}
+      {/*
+        Audio element. The mapping from element state -> UI state is honest:
+          - onPlay  : the element actually started playing -> reflect playing
+          - onPause : the element actually paused -> reflect paused, BUT only
+                     if audio had ever played (some browsers fire a spurious
+                     pause during src reattach before any sound has come out;
+                     we detect this via currentTime/played and ignore it).
+          - onEnded : in solo mode, advance; in live mode the server already
+                     has, so refetch /api/now.
+        play()/pause() calls are driven by useLiveAudio (live) and the
+        solo-source effect above; we don't call them from inside these
+        handlers.
+      */}
       <audio
         ref={audioRef}
         onEnded={handleAudioEnded}
         onPlay={() => setPlaying(true)}
         onPause={(e) => {
-          // Only reflect pauses that came from the user (or the play() promise
-          // rejected). Some Android browsers + hls.js fire spurious `pause`
-          // events while attaching the MediaSource — BEFORE any audio ever
-          // played. Treating those as "user paused" causes the play button to
-          // flip back to pause instantly. We detect this by checking whether
-          // the element ever produced any audio (currentTime > 0). If it has
-          // never started, ignore the pause event.
           const a = e.currentTarget as HTMLAudioElement;
-          if (a.currentTime > 0 || a.played?.length) {
-            setPlaying(false);
-          }
+          if (a.currentTime > 0 || a.played?.length) setPlaying(false);
         }}
         preload="auto"
         playsInline
