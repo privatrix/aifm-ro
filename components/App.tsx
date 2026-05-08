@@ -160,20 +160,10 @@ export default function App() {
     enabled: liveMode,
     playing,
     urls: liveUrls,
+    soloSrc: liveMode ? undefined : (currentSong?.fileUrl ?? undefined),
     onPlayFail: () => setPlaying(false),
     onDebug: dlog,
   });
-
-  // Solo-mode source assignment. Live mode is handled by useLiveAudio above.
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    if (liveMode) return;
-    if (!currentSong?.fileUrl) return;
-    if (a.src === currentSong.fileUrl) return;
-    a.src = currentSong.fileUrl;
-    a.load();
-  }, [currentSong?.fileUrl, liveMode]);
 
   // Vote handler (with API call)
   const toggleVote = useCallback(async (id: number) => {

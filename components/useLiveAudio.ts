@@ -8,9 +8,9 @@ import { useEffect, useRef } from "react";
  *   - iOS Safari  -> HLS (native, gives ~1-2s start latency, jitter-resilient)
  *   - everywhere  -> MP3 (Icecast direct, universal compat, ~2-3s start latency)
  *
- * Why not hls.js for non-Safari?  We tried. Android Chrome's MediaSource has
- * codec-compat quirks with our MPEG-TS that produce silent "playing" elements
- * intermittently. MP3-over-Icecast is the boring, reliable path.
+ * Why not hls.js for non-Safari? Android Chrome's MediaSource has codec-compat
+ * quirks with our MPEG-TS that produce silent "playing" elements. MP3 over
+ * Icecast is the boring, reliable path.
  */
 export interface LiveStreamUrls {
   hls: string;
@@ -21,14 +21,8 @@ export interface LiveStreamUrls {
 /**
  * Decide which live stream URL the current browser should play.
  *
- * - Apple devices (Safari on iOS/macOS) play HLS natively. Use it for the
- *   smoothest live feel and the ability to seek to the live edge after
- *   network jitter.
- * - Everything else (Android, Chrome, Firefox) plays MP3 from Icecast.
- *
- * Note: this is called during render (and inside the audio sync effect), so
- * it is safe to use when window/document are available. On the server we
- * default to MP3 (irrelevant: SSR doesn't bind the audio element).
+ * - Apple devices (Safari on iOS/macOS) play HLS natively.
+ * - Everything else plays MP3 from Icecast.
  */
 export function pickLiveUrl(urls: LiveStreamUrls): { url: string; kind: "hls" | "mp3" | "opus" } {
   const supportsNativeHls = typeof document !== "undefined" && (() => {
@@ -45,37 +39,30 @@ export function pickLiveUrl(urls: LiveStreamUrls): { url: string; kind: "hls" | 
 }
 
 /**
- * Drive the live broadcast on an <audio> element.
+ * Drive an <audio> element from a `playing` boolean.
  *
- * Responsibilities:
- *   1. Pick the right source URL for the browser and assign it to the audio
- *      element.
- *   2. Call play() / pause() to follow `playing`. Honest mapping: if the
- *      browser rejects play() (autoplay policy), reflect that in `onPlayFail`
- *      so the UI can update.
- *   3. For HLS: keep the listener at the live edge after stalls/jitter. iOS
- *      treats HLS as a seekable timeline by default and otherwise lets users
- *      drift behind broadcast.
+ * Modes:
+ *   - enabled=true  : LIVE broadcast. Hook picks URL from `urls` based on browser.
+ *   - enabled=false : SOLO playback. Parent passes per-song URL via `soloSrc`.
  *
- * What this hook deliberately does NOT do:
- *   - Listen to the audio element's own `pause`/`play` events. The parent
- *     attaches those directly to <audio> for clear semantics (see App.tsx).
- *   - Reload the source on pause. That breaks resume on some Android browsers
- *     and provides little value (the user resumes a few seconds behind live,
- *     which is fine for radio).
- *   - Pre-warm by silently playing on mount. Mobile browsers reject muted
- *     autoplay anyway and the trick only worked on desktop.
+ * In either mode, the hook owns the play()/pause() lifecycle. The audio
+ * element's own `play`/`pause` events are still attached by the parent's
+ * <audio> JSX so the UI's `playing` state can reflect element state honestly;
+ * this hook DRIVES the element, the JSX OBSERVES it.
+ *
+ * For HLS the hook also keeps the listener at the live edge after stalls.
  */
 export function useLiveAudio(opts: {
   audioRef: React.RefObject<HTMLAudioElement | null>;
-  enabled: boolean;        // true = live mode, false = solo mode
-  playing: boolean;        // user's intent
+  enabled: boolean;
+  playing: boolean;
   urls: LiveStreamUrls;
+  soloSrc?: string;
   onPlayFail?: (err: unknown) => void;
   onDebug?: (line: string) => void;
 }) {
-  const { audioRef, enabled, playing, urls, onPlayFail, onDebug } = opts;
-  const dbg = (s: string) => { try { onDebug?.(s); } catch {} };
+  const { audioRef, enabled, playing, urls, soloSrc, onPlayFail, onDebug } = opts;
+  const dbg = (s: string) => { try { onDebug?.(s); } catch { /* ignore */ } };
   const liveSeekCleanup = useRef<(() => void) | null>(null);
 
   // 1. Source assignment.
@@ -83,37 +70,35 @@ export function useLiveAudio(opts: {
     const a = audioRef.current;
     if (!a) return;
 
-    // Tear down any previous live-seek listeners on src change.
     liveSeekCleanup.current?.();
     liveSeekCleanup.current = null;
 
-    if (!enabled) {
-      // Solo mode handles its own src in the parent. Nothing to do here.
-      return;
+    let url = "";
+    let kind: "hls" | "mp3" | "opus" | "solo" = "solo";
+
+    if (enabled) {
+      const picked = pickLiveUrl(urls);
+      url = picked.url;
+      kind = picked.kind;
+    } else if (soloSrc) {
+      url = soloSrc;
+      kind = "solo";
     }
 
-    const { url, kind } = pickLiveUrl(urls);
     if (!url) return;
 
     if (a.src !== url) {
       a.src = url;
       a.load();
       dbg(`src=${url.slice(-30)} kind=${kind}`);
-    } else {
-      dbg(`src unchanged kind=${kind}`);
     }
 
     if (kind === "hls") {
-      // iOS Safari treats HLS as a seekable timeline. After a stall or
-      // network blip, it resumes at the same offset and the listener drifts
-      // further behind broadcast. Detect stalls/recovery and seek to the
-      // live edge each time.
       const seekToLive = () => {
         try {
           const r = a.seekable;
           if (r && r.length > 0) {
             const liveEdge = r.end(r.length - 1);
-            // Stay 2s behind the very edge to keep a small buffer.
             const target = Math.max(liveEdge - 2, 0);
             if (target > a.currentTime + 1.5) a.currentTime = target;
           }
@@ -137,19 +122,30 @@ export function useLiveAudio(opts: {
       liveSeekCleanup.current?.();
       liveSeekCleanup.current = null;
     };
-  // We re-run whenever the active mode flips OR the URL config changes.
-  // The picked URL is a function of urls + browser, so urls is enough.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, urls.hls, urls.mp3, urls.opus]);
+  }, [enabled, urls.hls, urls.mp3, urls.opus, soloSrc]);
 
-  // 2. play() / pause() to follow `playing`.
+  // 2. play() / pause().
+  //
+  // Always re-runs when `playing` flips, in either mode. Before play(), if
+  // the element is in an empty/error state, call load() to refresh the
+  // connection. This covers the case where Icecast drops the listener after
+  // pause and the next play() needs a fresh fetch.
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
 
     a.muted = false;
     a.volume = 1;
+
     if (playing) {
+      const needsReload = a.networkState === HTMLMediaElement.NETWORK_NO_SOURCE
+        || a.readyState === HTMLMediaElement.HAVE_NOTHING
+        || a.error !== null;
+      if (needsReload && a.src) {
+        dbg(`reload before play() rs=${a.readyState} ns=${a.networkState} err=${a.error?.code ?? "none"}`);
+        a.load();
+      }
       dbg(`play() rs=${a.readyState} ns=${a.networkState} muted=${a.muted} vol=${a.volume} src=${a.src?.slice(-30) ?? "(none)"}`);
       const p = a.play();
       if (p && typeof p.catch === "function") {
@@ -168,9 +164,6 @@ export function useLiveAudio(opts: {
       dbg(`pause()`);
       a.pause();
     }
-  // playing is the only intent driver here. We intentionally do NOT depend
-  // on src changes -- those are handled by the source-assignment effect,
-  // which loads new media without restarting playback.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
 }
