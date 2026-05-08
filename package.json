@@ -13,6 +13,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1043.0",
     "@hookform/resolvers": "^5.2.2",
     "@neondatabase/serverless": "^1.1.0",
+    "@node-rs/argon2": "^2.0.2",
     "autoprefixer": "^10.4.20",
     "drizzle-orm": "^0.45.2",
     "music-metadata": "^11.12.3",
@@ -30,6 +31,6 @@
     "@types/react": "18.3.28",
     "@types/react-dom": "^18",
     "drizzle-kit": "^0.31.10",
-    "typescript": "5.9.3"
+    "typescript": "^5.9.3"
   }
 }

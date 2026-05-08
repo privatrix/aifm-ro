@@ -3,6 +3,7 @@ import { eq, and, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { db } from "@/db";
 import { songs, voteLog } from "@/db/schema";
+import { currentUser } from "@/lib/require-user";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ ok: false, error: "bad id" }, { status: 400 });
   }
   const fp = fingerprint(req);
+  const user = await currentUser();
 
   // Toggle: if a vote already exists, remove it; otherwise add it.
   const existing = await db
@@ -36,7 +38,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ ok: true, voted: false, votes: row?.votes ?? 0 });
   }
 
-  await db.insert(voteLog).values({ songId: id, fingerprint: fp });
+  // Bind userId when signed in. Anonymous voters keep working via fingerprint.
+  await db.insert(voteLog).values({ songId: id, fingerprint: fp, userId: user?.id ?? null });
   const [row] = await db
     .update(songs)
     .set({ votes: sql`${songs.votes} + 1` })

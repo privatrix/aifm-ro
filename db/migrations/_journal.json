@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1778080660528,
+      "tag": "0000_whole_madame_web",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778890000000,
+      "tag": "0001_add_last_heartbeat_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778900000000,
+      "tag": "0002_users_and_profile",
+      "breakpoints": true
+    }
+  ]
+}

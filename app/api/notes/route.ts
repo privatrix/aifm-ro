@@ -3,6 +3,7 @@ import { z } from "zod";
 import { eq, desc, and } from "drizzle-orm";
 import { db } from "@/db";
 import { notes } from "@/db/schema";
+import { currentUser } from "@/lib/require-user";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,13 +25,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 400 });
   }
   const { text, fromName } = parsed.data;
+  // If the request comes with a session cookie, bind the note to the user
+  // and use their displayName instead of any fromName they typed (the UI
+  // shouldn't even ask for one in that case, but we defend in depth).
+  const user = await currentUser();
   const [row] = await db
     .insert(notes)
     .values({
-      fromName: fromName ?? "anonim",
+      fromName: user?.displayName ?? fromName ?? "anonim",
       text,
       status: "pending",
       timeLabel: new Date().toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" }),
+      userId: user?.id ?? null,
     })
     .returning();
   return NextResponse.json({ ok: true, note: { id: row.id } });
