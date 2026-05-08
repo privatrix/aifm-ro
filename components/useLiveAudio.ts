@@ -45,10 +45,15 @@ export function pickLiveUrl(urls: LiveStreamUrls): { url: string; kind: "hls" | 
  *   - enabled=true  : LIVE broadcast. Hook picks URL from `urls` based on browser.
  *   - enabled=false : SOLO playback. Parent passes per-song URL via `soloSrc`.
  *
- * In either mode, the hook owns the play()/pause() lifecycle. The audio
- * element's own `play`/`pause` events are still attached by the parent's
- * <audio> JSX so the UI's `playing` state can reflect element state honestly;
- * this hook DRIVES the element, the JSX OBSERVES it.
+ * Single effect handles src + play/pause as one atomic operation. This avoids
+ * the multi-effect race where src is assigned in one effect and play() runs
+ * in another — if the user toggles playing while changing src (e.g. clicking
+ * a library song which sets liveMode=false + soloIdx=N + playing=true all at
+ * once), the play() effect could fire against the old/empty src.
+ *
+ * The audio element's own `play`/`pause` events are still attached by the
+ * parent's <audio> JSX so the UI's `playing` state can reflect element state
+ * honestly; this hook DRIVES the element, the JSX OBSERVES it.
  *
  * For HLS the hook also keeps the listener at the live edge after stalls.
  */
@@ -65,14 +70,11 @@ export function useLiveAudio(opts: {
   const dbg = (s: string) => { try { onDebug?.(s); } catch { /* ignore */ } };
   const liveSeekCleanup = useRef<(() => void) | null>(null);
 
-  // 1. Source assignment.
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
 
-    liveSeekCleanup.current?.();
-    liveSeekCleanup.current = null;
-
+    // ---- 1. Resolve the source URL for this configuration. ----
     let url = "";
     let kind: "hls" | "mp3" | "opus" | "solo" = "solo";
 
@@ -85,14 +87,53 @@ export function useLiveAudio(opts: {
       kind = "solo";
     }
 
-    if (!url) return;
+    // ---- 2. Tear down any previous HLS live-edge tracker. ----
+    liveSeekCleanup.current?.();
+    liveSeekCleanup.current = null;
 
-    if (a.src !== url) {
+    // ---- 3. Assign src if it changed. ----
+    const srcChanged = url && a.src !== url;
+    if (srcChanged) {
       a.src = url;
       a.load();
       dbg(`src=${url.slice(-30)} kind=${kind}`);
     }
 
+    // ---- 4. Audio element knobs. ----
+    a.muted = false;
+    a.volume = 1;
+
+    // ---- 5. Drive play/pause. ----
+    if (playing && url) {
+      // If the element entered an empty/error state (some browsers do this
+      // when an Icecast connection drops on pause), reload before play.
+      const needsReload = a.networkState === HTMLMediaElement.NETWORK_NO_SOURCE
+        || a.readyState === HTMLMediaElement.HAVE_NOTHING
+        || a.error !== null;
+      if (needsReload && !srcChanged) {
+        dbg(`reload before play() rs=${a.readyState} ns=${a.networkState} err=${a.error?.code ?? "none"}`);
+        a.load();
+      }
+      dbg(`play() rs=${a.readyState} ns=${a.networkState} muted=${a.muted} vol=${a.volume} src=${a.src.slice(-30)}`);
+      const p = a.play();
+      if (p && typeof p.catch === "function") {
+        p.catch((err: unknown) => {
+          const name = (err as { name?: string })?.name;
+          const msg  = (err as { message?: string })?.message;
+          dbg(`play() REJECTED ${name}: ${msg ?? ""}`);
+          if (name === "NotAllowedError") onPlayFail?.(err);
+          else console.warn("[useLiveAudio] play() rejected:", err);
+        });
+        if (typeof p.then === "function") {
+          p.then(() => dbg(`play() RESOLVED`));
+        }
+      }
+    } else if (!playing) {
+      dbg(`pause()`);
+      a.pause();
+    }
+
+    // ---- 6. HLS live-edge tracking (Apple Safari only). ----
     if (kind === "hls") {
       const seekToLive = () => {
         try {
@@ -122,48 +163,7 @@ export function useLiveAudio(opts: {
       liveSeekCleanup.current?.();
       liveSeekCleanup.current = null;
     };
+  // Re-run on every config change. One effect, one truth, no race conditions.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, urls.hls, urls.mp3, urls.opus, soloSrc]);
-
-  // 2. play() / pause().
-  //
-  // Always re-runs when `playing` flips, in either mode. Before play(), if
-  // the element is in an empty/error state, call load() to refresh the
-  // connection. This covers the case where Icecast drops the listener after
-  // pause and the next play() needs a fresh fetch.
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-
-    a.muted = false;
-    a.volume = 1;
-
-    if (playing) {
-      const needsReload = a.networkState === HTMLMediaElement.NETWORK_NO_SOURCE
-        || a.readyState === HTMLMediaElement.HAVE_NOTHING
-        || a.error !== null;
-      if (needsReload && a.src) {
-        dbg(`reload before play() rs=${a.readyState} ns=${a.networkState} err=${a.error?.code ?? "none"}`);
-        a.load();
-      }
-      dbg(`play() rs=${a.readyState} ns=${a.networkState} muted=${a.muted} vol=${a.volume} src=${a.src?.slice(-30) ?? "(none)"}`);
-      const p = a.play();
-      if (p && typeof p.catch === "function") {
-        p.catch((err: unknown) => {
-          const name = (err as { name?: string })?.name;
-          const msg  = (err as { message?: string })?.message;
-          dbg(`play() REJECTED ${name}: ${msg ?? ""}`);
-          if (name === "NotAllowedError") onPlayFail?.(err);
-          else console.warn("[useLiveAudio] play() rejected:", err);
-        });
-        if (typeof p.then === "function") {
-          p.then(() => dbg(`play() RESOLVED`));
-        }
-      }
-    } else {
-      dbg(`pause()`);
-      a.pause();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing]);
+  }, [enabled, playing, urls.hls, urls.mp3, urls.opus, soloSrc]);
 }
