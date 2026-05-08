@@ -165,18 +165,12 @@ export default function App() {
     const hls = process.env.NEXT_PUBLIC_STREAM_URL_HLS || "";
     const mp3 = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
     const opus = process.env.NEXT_PUBLIC_STREAM_URL || "";
-    // Use HLS only on browsers that play it natively (iOS Safari).
-    // Everywhere else, serve MP3 directly. hls.js on Android Chrome's
-    // MediaSource has codec-compat quirks (ID3 PIDs, mp4a.40.2 in MPEG-TS)
-    // that produce a silent "playing" element on some device/version combos.
-    // MP3 over Icecast is a single, well-trodden path that just works.
-    const isAppleNative = typeof document !== "undefined" && (() => {
-      try {
-        const probe = document.createElement("audio");
-        return probe.canPlayType("application/vnd.apple.mpegurl") !== "";
-      } catch { return false; }
-    })();
-    if (hls && isAppleNative) return { url: hls, kind: "hls" };
+    // Just use MP3 everywhere. iOS Safari + our HLS segments produces
+    // DEMUXER_ERROR_COULD_NOT_PARSE (likely the timed_id3 data stream
+    // Liquidsoap embeds in MPEG-TS), and Android Chrome with hls.js has
+    // its own MediaSource quirks. MP3 over Icecast is the boring path that
+    // works on every browser. We keep HLS as a last-resort fallback only
+    // if MP3 isn't configured.
     if (mp3) return { url: mp3, kind: "mp3" };
     if (opus) return { url: opus, kind: "opus" };
     return { url: hls, kind: "hls" };
