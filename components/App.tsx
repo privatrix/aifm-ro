@@ -7,6 +7,8 @@ import LibraryView from "./LibraryView";
 import NotesView from "./NotesView";
 import MenuDrawer from "./MenuDrawer";
 import ProfileView from "./ProfileView";
+import ProfileDetailView, { type DetailMode } from "./ProfileDetailView";
+import AuthSheet, { type AuthMode, type AuthUser } from "./AuthSheet";
 import { useLiveAudio } from "./useLiveAudio";
 
 type Tab = "radio" | "biblioteca" | "bilete" | "profile";
@@ -41,6 +43,18 @@ export default function App() {
   const [soloIdx, setSoloIdx] = useState(0);
   const [listenerCount, setListenerCount] = useState<number | null>(null);
 
+  // ---- Auth + profile state ----
+  // We hydrate `me` once on mount via /api/me. Null = signed out (or check
+  // hasn't completed yet; we don't differentiate in the UI because the
+  // signed-out state is the default and the sign-in CTA is harmless to show).
+  const [me, setMe] = useState<AuthUser | null>(null);
+  const [stats, setStats] = useState({ favorites: 0, notes: 0, hoursListened: 0 });
+  const [authMode, setAuthMode] = useState<AuthMode>("off");
+  const [profileDetail, setProfileDetail] = useState<DetailMode | null>(null);
+  // Set of song ids the signed-in user has favorited. Drives the heart icon
+  // throughout the UI in addition to the existing anonymous vote toggle.
+  const [favorites, setFavorites] = useState<Set<number>>(new Set());
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   // On-screen debug overlay — visible only with ?debug=1 in the URL.
   // Useful for diagnosing mobile-only audio bugs without DevTools.
@@ -55,6 +69,114 @@ export default function App() {
       return next.length > 30 ? next.slice(-30) : next;
     });
   }, [debugEnabled]);
+
+  // 0. Hydrate the current user from the session cookie. We also fetch the
+  //    user's favorites so the heart icon reflects their account state from
+  //    the first paint after sign-in.
+  const refreshMe = useCallback(async () => {
+    try {
+      const r = await fetch("/api/me", { cache: "no-store" });
+      if (r.status === 401) { setMe(null); setFavorites(new Set()); return; }
+      const j = await r.json();
+      if (j?.ok) {
+        setMe(j.user as AuthUser);
+        setStats(j.stats ?? { favorites: 0, notes: 0, hoursListened: 0 });
+      }
+    } catch { /* offline; treat as signed-out */ }
+  }, []);
+  const refreshFavorites = useCallback(async () => {
+    try {
+      const r = await fetch("/api/me/favorites", { cache: "no-store" });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j?.ok) setFavorites(new Set((j.favorites as { id: number }[]).map(f => f.id)));
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    void refreshMe();
+  }, [refreshMe]);
+  useEffect(() => {
+    if (me) void refreshFavorites();
+    else setFavorites(new Set());
+  }, [me, refreshFavorites]);
+
+  // Toggle favorite on a song. For signed-out users we fall back to opening
+  // the auth sheet so the action has a meaningful next step.
+  const toggleFavorite = useCallback(async (songId: number) => {
+    if (!me) { setAuthMode("signup"); return; }
+    const wasFav = favorites.has(songId);
+    // Optimistic UI update.
+    setFavorites(prev => {
+      const next = new Set(prev);
+      wasFav ? next.delete(songId) : next.add(songId);
+      return next;
+    });
+    try {
+      const res = await fetch(`/api/me/favorites/${songId}`, {
+        method: wasFav ? "DELETE" : "POST",
+        cache: "no-store",
+      });
+      const j = await res.json().catch(() => ({}));
+      if (j?.ok) {
+        // Reconcile with server.
+        setStats(s => ({ ...s, favorites: j.count ?? s.favorites }));
+      } else {
+        // Revert.
+        setFavorites(prev => {
+          const next = new Set(prev);
+          wasFav ? next.add(songId) : next.delete(songId);
+          return next;
+        });
+      }
+    } catch {
+      setFavorites(prev => {
+        const next = new Set(prev);
+        wasFav ? next.add(songId) : next.delete(songId);
+        return next;
+      });
+    }
+  }, [favorites, me]);
+
+  const onAuthSuccess = useCallback((user: AuthUser) => {
+    setMe(user);
+    setAuthMode("off");
+    void refreshMe();
+    void refreshFavorites();
+  }, [refreshMe, refreshFavorites]);
+
+  const signOut = useCallback(async () => {
+    try { await fetch("/api/auth/signout", { method: "POST", cache: "no-store" }); }
+    catch { /* ignore */ }
+    setMe(null);
+    setFavorites(new Set());
+    setStats({ favorites: 0, notes: 0, hoursListened: 0 });
+    setProfileDetail(null);
+  }, []);
+
+  const saveProfile = useCallback(async (patch: Partial<{ name: string; bio: string; city: string }>) => {
+    if (!me) return;
+    const body = {
+      displayName: patch.name,
+      bio: patch.bio,
+      city: patch.city,
+    };
+    try {
+      const res = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+        cache: "no-store",
+      });
+      if (res.ok) {
+        setMe({
+          ...me,
+          displayName: patch.name ?? me.displayName,
+          bio: patch.bio ?? me.bio,
+          city: patch.city ?? me.city,
+        });
+      }
+    } catch { /* ignore */ }
+  }, [me]);
 
   // 1. Pull catalog
   useEffect(() => {
@@ -175,6 +297,12 @@ export default function App() {
       return next;
     });
     setVotes(v => ({ ...v, [id]: Math.max(0, (v[id] || 0) + (wasVoted ? -1 : 1)) }));
+    // For signed-in users: a vote is also a personal favorite. Mirror the
+    // vote state into favorites so the profile's "Piesele mele favorite"
+    // list reflects what the user actually liked.
+    if (me) {
+      void toggleFavorite(id).catch(() => { /* favorite reconciliation is best-effort */ });
+    }
     try {
       const r = await fetch(`/api/songs/${id}/vote`, { method: "POST", cache: "no-store" });
       if (!r.ok) throw new Error("vote failed");
@@ -197,7 +325,7 @@ export default function App() {
       });
       setVotes(v => ({ ...v, [id]: Math.max(0, (v[id] || 0) + (wasVoted ? 1 : -1)) }));
     }
-  }, [voted]);
+  }, [voted, me, toggleFavorite]);
 
   // Engage solo mode when user manually changes track (jumps to player tab)
   function gotoSong(idx: number) {
@@ -371,11 +499,34 @@ export default function App() {
         {tab === "bilete" && (
           <NotesView onNote={() => setShowNote(true)} />
         )}
-        {tab === "profile" && (
+        {tab === "profile" && profileDetail && (
+          <ProfileDetailView
+            mode={profileDetail}
+            onBack={() => setProfileDetail(null)}
+            onPlaySong={(songId) => {
+              const idx = songs.findIndex(s => s.id === songId);
+              if (idx >= 0) { playSongInline(idx); setProfileDetail(null); setTab("radio"); }
+            }}
+          />
+        )}
+        {tab === "profile" && !profileDetail && (
           <ProfileView
-            user={null}
-            onSignIn={() => { /* TODO: backend */ }}
-            onSignUp={() => { /* TODO: backend */ }}
+            user={me ? {
+              name: me.displayName,
+              handle: me.handle,
+              bio: me.bio,
+              city: me.city,
+              avatarUrl: me.avatarUrl ?? undefined,
+              joinedAt: me ? formatJoined(me) : undefined,
+            } : null}
+            stats={stats}
+            onSignIn={() => setAuthMode("signin")}
+            onSignUp={() => setAuthMode("signup")}
+            onSignOut={signOut}
+            onSave={saveProfile}
+            onOpenFavorites={() => setProfileDetail("favorites")}
+            onOpenNotes={() => setProfileDetail("notes")}
+            onOpenHistory={() => setProfileDetail("history")}
           />
         )}
       </div>
@@ -469,6 +620,23 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <AuthSheet
+        mode={authMode}
+        onClose={() => setAuthMode("off")}
+        onSuccess={onAuthSuccess}
+        onSwitchMode={(m) => setAuthMode(m)}
+      />
     </div>
   );
+}
+
+function formatJoined(me: AuthUser): string | undefined {
+  // ProfileView shows "din <text>" — we render the year of account creation.
+  // The createdAt comes from the API as an ISO string; if absent, omit the field.
+  const raw = (me as unknown as { createdAt?: string }).createdAt;
+  if (!raw) return undefined;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toLocaleDateString("ro-RO", { month: "short", year: "numeric" });
 }

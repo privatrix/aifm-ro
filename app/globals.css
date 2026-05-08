@@ -137,6 +137,12 @@ body::after {
   border-bottom: 1px solid #ececef;
   flex-shrink: 0;
 }
+.white-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
 
 /* ── Station row (library list) ── */
 .station-row {

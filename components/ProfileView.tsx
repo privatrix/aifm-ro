@@ -23,12 +23,16 @@ interface Props {
   onSignUp?: () => void;
   onSignOut?: () => void;
   onSave?: (patch: Partial<User>) => void;
+  onOpenFavorites?: () => void;
+  onOpenNotes?: () => void;
+  onOpenHistory?: () => void;
 }
 
 const DEFAULT_STATS: Stats = { favorites: 0, notes: 0, hoursListened: 0 };
 
 export default function ProfileView({
   user, stats = DEFAULT_STATS, onSignIn, onSignUp, onSignOut, onSave,
+  onOpenFavorites, onOpenNotes, onOpenHistory,
 }: Props) {
 
   const [editing, setEditing] = useState(false);
@@ -212,12 +216,12 @@ export default function ProfileView({
           <div className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: "#8e8e93" }}>cont</div>
           <ul className="flex flex-col gap-1">
             {[
-              { l: "Piesele mele favorite", h: `${stats.favorites} salvate` },
-              { l: "Biletele mele", h: `${stats.notes} trimise` },
-              { l: "Istoric ascultare", h: "ultimele 30 zile" },
+              { l: "Piesele mele favorite", h: `${stats.favorites} salvate`, on: onOpenFavorites },
+              { l: "Biletele mele",          h: `${stats.notes} trimise`,    on: onOpenNotes },
+              { l: "Istoric ascultare",      h: "ultimele 30 zile",          on: onOpenHistory },
             ].map(row => (
               <li key={row.l}>
-                <button className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:bg-pink-50 transition-colors">
+                <button onClick={row.on} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:bg-pink-50 transition-colors">
                   <div className="flex-1 min-w-0">
                     <div className="font-sans font-semibold text-[14px]" style={{ color: "#1a1820" }}>{row.l}</div>
                     <div className="font-sans text-[11px]" style={{ color: "#8e8e93" }}>{row.h}</div>
