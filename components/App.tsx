@@ -10,6 +10,7 @@ import ProfileView from "./ProfileView";
 import ProfileDetailView, { type DetailMode } from "./ProfileDetailView";
 import AuthSheet, { type AuthMode, type AuthUser } from "./AuthSheet";
 import ChangePasswordSheet from "./ChangePasswordSheet";
+import PrivacySheet from "./PrivacySheet";
 import { useLiveAudio } from "./useLiveAudio";
 
 type Tab = "radio" | "biblioteca" | "bilete" | "profile";
@@ -53,6 +54,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<AuthMode>("off");
   const [profileDetail, setProfileDetail] = useState<DetailMode | null>(null);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   // Set of song ids the signed-in user has favorited. Drives the heart icon
   // throughout the UI in addition to the existing anonymous vote toggle.
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
@@ -530,6 +532,7 @@ export default function App() {
             onOpenNotes={() => setProfileDetail("notes")}
             onOpenHistory={() => setProfileDetail("history")}
             onChangePassword={() => setChangePasswordOpen(true)}
+            onOpenPrivacy={() => setPrivacyOpen(true)}
           />
         )}
       </div>
@@ -633,6 +636,17 @@ export default function App() {
       <ChangePasswordSheet
         open={changePasswordOpen}
         onClose={() => setChangePasswordOpen(false)}
+      />
+      <PrivacySheet
+        open={privacyOpen}
+        onClose={() => setPrivacyOpen(false)}
+        onAccountDeleted={() => {
+          // Account is gone; clear local state to mirror what /api/auth/signout would have done.
+          setMe(null);
+          setFavorites(new Set());
+          setStats({ favorites: 0, notes: 0, hoursListened: 0 });
+          setProfileDetail(null);
+        }}
       />
     </div>
   );

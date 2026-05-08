@@ -19,7 +19,7 @@ import {
   voteLog,
 } from "@/db/schema";
 import { currentUser, requireUser, unauthorized, UnauthorizedError } from "@/lib/require-user";
-import { validateDisplayName } from "@/lib/user-auth";
+import { validateDisplayName, verifyPassword } from "@/lib/user-auth";
 import { clearSessionCookie } from "@/lib/session-cookie";
 
 export const runtime = "nodejs";
@@ -110,10 +110,24 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
   let user;
   try { user = await requireUser(); }
   catch (e) { if (e instanceof UnauthorizedError) return unauthorized(); throw e; }
+
+  // Require the current password to confirm deletion. This prevents both
+  // accidental taps and CSRF (we don't have explicit CSRF tokens; SameSite
+  // cookies + this proof-of-knowledge are enough for an action this severe).
+  let body: unknown;
+  try { body = await req.json(); } catch { body = {}; }
+  const password = String((body as Record<string, unknown>)?.password ?? "");
+  if (!password) {
+    return NextResponse.json({ ok: false, error: "Introdu parola pentru a confirma." }, { status: 400 });
+  }
+  const ok = await verifyPassword(password, user.passwordHash);
+  if (!ok) {
+    return NextResponse.json({ ok: false, error: "Parolă greșită." }, { status: 400 });
+  }
 
   const db = getDb();
   // Order matters: nullify references before removing the user, then drop
