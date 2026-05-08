@@ -356,12 +356,13 @@ export default function App() {
       a.addEventListener("stalled", onStalled, { once: true });
     } else {
       a.pause();
-      // For live mode, also reload to drop the buffered tail so next play()
-      // starts from the live edge. Without this, the user resumes seconds
-      // behind broadcast.
-      if (liveMode) {
-        try { a.load(); } catch {}
-      }
+      // NOTE: We used to call a.load() here in live mode to drop the buffered
+      // tail and resume at the live edge. That works on iOS but breaks Android
+      // Chrome's Icecast handling — the next play() sometimes can't
+      // re-establish the stream and silently fails. The cost of NOT reloading
+      // is that the user resumes a few seconds behind live (whatever was
+      // buffered when they paused). That's a minor inconvenience vs. the
+      // alternative of pause-and-can't-resume. Keep it simple.
     }
   }, [playing, liveMode, currentSong?.id, currentSong?.fileUrl]);
 
