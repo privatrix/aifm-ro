@@ -336,7 +336,9 @@ export default function App() {
         onStalled={() => dlog("el stalled")}
         preload="auto"
         playsInline
-        crossOrigin="anonymous"
+        // No crossOrigin: we don't read audio samples or render to canvas;
+        // setting crossOrigin="anonymous" forces CORS mode and can refuse
+        // playback on browsers that are strict about response headers.
         className="hidden"
       />
 

@@ -148,8 +148,9 @@ export function useLiveAudio(opts: {
     if (!a) return;
 
     a.muted = false;
+    a.volume = 1;
     if (playing) {
-      dbg(`play() rs=${a.readyState} ns=${a.networkState} src=${a.src?.slice(-30) ?? "(none)"}`);
+      dbg(`play() rs=${a.readyState} ns=${a.networkState} muted=${a.muted} vol=${a.volume} src=${a.src?.slice(-30) ?? "(none)"}`);
       const p = a.play();
       if (p && typeof p.catch === "function") {
         p.catch((err: unknown) => {
