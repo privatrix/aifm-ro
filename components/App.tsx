@@ -227,11 +227,22 @@ export default function App() {
         cleanupHls();
         // Clear any existing src so the audio element doesn't try to play it.
         if (a.src && a.src !== "") { a.removeAttribute("src"); a.load(); }
+        const fallbackToMp3 = (reason: string) => {
+          const mp3 = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
+          console.warn("[audio] HLS failed, falling back to MP3:", reason);
+          if (!mp3) return;
+          if (hlsRef.current) {
+            try { hlsRef.current.destroy(); } catch {}
+            hlsRef.current = null;
+          }
+          if (a.src !== mp3) {
+            a.src = mp3;
+            a.load();
+          }
+        };
         void import("hls.js").then(({ default: Hls }) => {
           if (!Hls.isSupported()) {
-            // Fallback to MP3.
-            const mp3 = process.env.NEXT_PUBLIC_STREAM_URL_MP3 || "";
-            if (mp3) { a.src = mp3; a.load(); }
+            fallbackToMp3("hls.js not supported");
             return;
           }
           // Generous client-side buffer so transient mobile-network jitter
@@ -252,10 +263,27 @@ export default function App() {
             manifestLoadingMaxRetry: 6,
             levelLoadingMaxRetry: 6,
           });
+          // Fall back to MP3 on any fatal HLS error. hls.js can recover from
+          // most transient blips on its own, but if recovery fails (or the
+          // platform's MediaSource implementation rejects the segments — the
+          // exact failure mode some Android Chrome builds hit), we need an
+          // alternative source so the user gets audio.
+          hls.on(Hls.Events.ERROR, (_e: unknown, data: { fatal?: boolean; type?: string; details?: string }) => {
+            if (!data?.fatal) return;
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+              try { hls.startLoad(); return; } catch {}
+            }
+            if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+              try { hls.recoverMediaError(); return; } catch {}
+            }
+            fallbackToMp3(`fatal ${data.type ?? "?"}/${data.details ?? "?"}`);
+          });
           hls.loadSource(url);
           hls.attachMedia(a);
           hlsRef.current = hls;
-        }).catch(err => console.warn("[audio] hls.js load failed", err));
+        }).catch(err => {
+          fallbackToMp3(`hls.js import: ${err?.message ?? err}`);
+        });
         return;
       }
 
@@ -296,11 +324,14 @@ export default function App() {
           setPlaying(false);
         });
       }
-      // Surface audio element errors as paused state so the UI doesn't lie.
+      // Log audio element errors but DO NOT auto-pause the UI. hls.js performs
+      // its own recovery (and we have an MP3 fallback wired into its error
+      // handler), so flipping the UI to pause on the first transient error
+      // event makes the button bounce back to pause before audio actually
+      // arrives — the bug some Android browsers hit.
       const onError = () => {
         const e = a.error;
         console.warn("[audio] element error:", e?.code, e?.message);
-        setPlaying(false);
       };
       a.addEventListener("error", onError, { once: true });
       const onStalled = () => console.warn("[audio] stalled (network slowed)");
