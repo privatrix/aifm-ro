@@ -69,6 +69,13 @@ export function useLiveAudio(opts: {
   const { audioRef, enabled, playing, urls, soloSrc, onPlayFail, onDebug } = opts;
   const dbg = (s: string) => { try { onDebug?.(s); } catch { /* ignore */ } };
   const liveSeekCleanup = useRef<(() => void) | null>(null);
+  // Track whether we were playing on the previous run so we can detect a
+  // paused -> playing transition. On that transition for a live stream we
+  // force a load() to drop any stale buffered tail and re-establish the
+  // Icecast connection. Without this, Android Chrome plays the buffered
+  // ~1s of audio then stops because the underlying socket was closed on
+  // pause and the element doesn't refetch.
+  const wasPlaying = useRef<boolean>(false);
 
   useEffect(() => {
     const a = audioRef.current;
@@ -105,13 +112,17 @@ export function useLiveAudio(opts: {
 
     // ---- 5. Drive play/pause. ----
     if (playing && url) {
-      // If the element entered an empty/error state (some browsers do this
-      // when an Icecast connection drops on pause), reload before play.
-      const needsReload = a.networkState === HTMLMediaElement.NETWORK_NO_SOURCE
+      const transitioningFromPaused = !wasPlaying.current;
+      const inEmptyState = a.networkState === HTMLMediaElement.NETWORK_NO_SOURCE
         || a.readyState === HTMLMediaElement.HAVE_NOTHING
         || a.error !== null;
-      if (needsReload && !srcChanged) {
-        dbg(`reload before play() rs=${a.readyState} ns=${a.networkState} err=${a.error?.code ?? "none"}`);
+      // Live streams (Icecast/HLS) can't be trusted to resume cleanly from a
+      // buffered tail after pause — the underlying connection is closed.
+      // Force a reload on pause->play in live mode so we re-establish a fresh
+      // connection. Solo (per-song MP3) doesn't have this problem.
+      const liveResume = enabled && transitioningFromPaused && !srcChanged;
+      if ((inEmptyState || liveResume) && !srcChanged) {
+        dbg(`reload before play() rs=${a.readyState} ns=${a.networkState} err=${a.error?.code ?? "none"} liveResume=${liveResume}`);
         a.load();
       }
       dbg(`play() rs=${a.readyState} ns=${a.networkState} muted=${a.muted} vol=${a.volume} src=${a.src.slice(-30)}`);
@@ -132,6 +143,8 @@ export function useLiveAudio(opts: {
       dbg(`pause()`);
       a.pause();
     }
+
+    wasPlaying.current = playing;
 
     // ---- 6. HLS live-edge tracking (Apple Safari only). ----
     if (kind === "hls") {
