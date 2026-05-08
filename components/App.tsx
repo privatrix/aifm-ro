@@ -389,11 +389,18 @@ export default function App() {
       });
       if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(list));
     } catch { /* localStorage unavailable */ }
-    // Also POST to backend (best-effort, stage 6 will wire admin inbox)
+    // POST to backend. For signed-in users this binds the note to their
+    // account; Vio's reply will appear in the bilete tab once the cron tick
+    // (max 2 min) processes it.
     void fetch("/api/notes", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ text: noteText.trim() }),
+    }).then(r => {
+      if (r.ok && me) {
+        // Optimistic stats bump so the profile counter feels immediate.
+        setStats(s => ({ ...s, notes: s.notes + 1 }));
+      }
     }).catch(() => {});
     setNoteSent(true);
     setTimeout(() => {

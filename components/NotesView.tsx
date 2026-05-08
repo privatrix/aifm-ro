@@ -15,10 +15,23 @@ const TYPING_POOL = [
   { name: "Mihai", city: "Sibiu" },
 ];
 
+/**
+ * "My notes" tab.
+ *
+ * Two backends, picked at runtime:
+ *   - Signed-in users: /api/me/notes (real, persistent, includes Vio's reply
+ *     and read status). We poll every few seconds while the tab is visible
+ *     so the reply appears within ~10s of Vio writing it (cron tick + poll).
+ *   - Signed-out users: localStorage fallback so the typing-out-and-sending
+ *     experience still works. No reply will ever come back.
+ */
 interface MyNote {
   id: string;
   text: string;
   createdAt: number;
+  reply?: string | null;
+  status?: "pending" | "read" | "archived";
+  timeLabel?: string;
 }
 
 const STORAGE_KEY = "aifm:my-notes";
@@ -38,6 +51,9 @@ export default function NotesView({ onNote }: Props) {
   const [typingIdx, setTypingIdx] = useState(0);
   const [myNotes, setMyNotes] = useState<MyNote[]>([]);
   const [serverNotes, setServerNotes] = useState<VioNote[] | null>(null);
+  // True once /api/me/notes returns 200; null while we don't know yet.
+  // Drives whether we render server-backed bilete or localStorage ones.
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
 
   // Fetch real published notes; fall back to mock if API empty/fails.
   useEffect(() => {
@@ -58,17 +74,72 @@ export default function NotesView({ onNote }: Props) {
 
   const sourceNotes: VioNote[] = serverNotes && serverNotes.length > 0 ? serverNotes : MOCK_NOTES;
 
+  // Load my notes. For signed-in users, poll the API every 6 seconds while
+  // the bilete tab is visible so Vio's reply appears within a tick of the
+  // /api/cron/vio-reply run that produces it.
   useEffect(() => {
-    setMyNotes(loadMyNotes());
-    const onStorage = () => setMyNotes(loadMyNotes());
-    window.addEventListener("storage", onStorage);
-    // also poll once after a click on Pasează (cheap)
-    const t = setInterval(() => setMyNotes(loadMyNotes()), 1500);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      clearInterval(t);
+    let cancelled = false;
+
+    async function loadServer() {
+      try {
+        const r = await fetch("/api/me/notes", { cache: "no-store" });
+        if (cancelled) return;
+        if (r.status === 401) {
+          // Not signed in: fall back to localStorage.
+          setSignedIn(false);
+          setMyNotes(loadMyNotes());
+          return;
+        }
+        const j = await r.json();
+        if (!j?.ok) {
+          // Treat any non-ok as signed-out; localStorage stays the source of truth.
+          setSignedIn(false);
+          setMyNotes(loadMyNotes());
+          return;
+        }
+        setSignedIn(true);
+        // Map server shape -> MyNote.
+        const mapped: MyNote[] = (j.notes as Array<{ id: number; text: string; createdAt: string; reply: string | null; status: "pending" | "read" | "archived"; timeLabel: string }>).map(n => ({
+          id: String(n.id),
+          text: n.text,
+          createdAt: new Date(n.createdAt).getTime(),
+          reply: n.reply,
+          status: n.status,
+          timeLabel: n.timeLabel,
+        }));
+        setMyNotes(mapped);
+      } catch {
+        // Network error: don't change signed-in flag, just keep last state.
+      }
+    }
+
+    void loadServer();
+
+    // Poll (only when this tab is visible) so a reply lands automatically.
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      void loadServer();
+    }, 6000);
+
+    // Local-storage fallback updates while signed-out users send notes.
+    const onStorage = () => {
+      if (signedIn === false) setMyNotes(loadMyNotes());
     };
-  }, []);
+    window.addEventListener("storage", onStorage);
+    const localTick = setInterval(() => {
+      if (signedIn === false) setMyNotes(loadMyNotes());
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      clearInterval(localTick);
+      window.removeEventListener("storage", onStorage);
+    };
+  // We intentionally re-run the poll-loop only when sign-in state flips, not
+  // on every render. signedIn flips at most twice per session.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedIn]);
 
   useEffect(() => {
     const t = setInterval(() => setTypingIdx(i => (i + 1) % TYPING_POOL.length), 8000);
@@ -238,26 +309,64 @@ export default function NotesView({ onNote }: Props) {
                   </div>
                 </div>
               ) : (
-                myNotes.map(n => (
-                  <div key={n.id} className="flex flex-col gap-1 max-w-[85%] animate-fade-in">
-                    <div className="flex items-center gap-2 px-1">
-                      <span className="font-sans font-semibold text-[12px]" style={{ color: "#1a1820" }}>Tu</span>
-                      <span className="font-mono text-[10px]" style={{ color: "#8e8e93" }}>
-                        {new Date(n.createdAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                      <span className="ml-auto flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full" style={{ background: "#F57C00" }} />
-                        <span className="font-mono text-[10px]" style={{ color: "#F57C00" }}>în coadă</span>
-                      </span>
+                myNotes.map(n => {
+                  const hasReply = !!n.reply;
+                  const isPending = !hasReply && (n.status ?? "pending") === "pending";
+                  return (
+                    <div key={n.id} className="flex flex-col gap-2 animate-fade-in">
+                      {/* Listener bubble — left */}
+                      <div className="flex flex-col gap-1 max-w-[85%]">
+                        <div className="flex items-center gap-2 px-1">
+                          <span className="font-sans font-semibold text-[12px]" style={{ color: "#1a1820" }}>Tu</span>
+                          <span className="font-mono text-[10px]" style={{ color: "#8e8e93" }}>
+                            {n.timeLabel || new Date(n.createdAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          {isPending && (
+                            <span className="ml-auto flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full animate-breathe" style={{ background: "#F57C00" }} />
+                              <span className="font-mono text-[10px]" style={{ color: "#F57C00" }}>în coadă</span>
+                            </span>
+                          )}
+                          {hasReply && (
+                            <span className="ml-auto flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full" style={{ background: "#1A7F37" }} />
+                              <span className="font-mono text-[10px]" style={{ color: "#1A7F37" }}>Vio a citit</span>
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className="rounded-2xl rounded-tl-md px-4 py-2.5"
+                          style={{ background: "#f5f5f7", border: "1px solid #e5e5ea" }}
+                        >
+                          <p className="font-serif text-[14.5px] italic leading-snug" style={{ color: "#3a3530" }}>{n.text}</p>
+                        </div>
+                      </div>
+
+                      {/* Vio reply — right */}
+                      {hasReply && (
+                        <div className="flex justify-end gap-2">
+                          <div className="flex flex-col gap-1 max-w-[85%] items-end">
+                            <div className="flex items-center gap-2 px-1">
+                              <span className="font-sans font-semibold text-[12px]" style={{ color: "#C2185B" }}>Vio</span>
+                            </div>
+                            <div
+                              className="rounded-2xl rounded-tr-md px-4 py-2.5"
+                              style={{ background: "linear-gradient(135deg, #FCE4EC, #F8BBD0)", border: "1px solid rgba(233,30,140,0.18)" }}
+                            >
+                              <p className="font-serif text-[14.5px] italic leading-snug" style={{ color: "#7a1142" }}>{n.reply}</p>
+                            </div>
+                          </div>
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center font-serif text-[13px] text-white shrink-0 mt-5"
+                            style={{ background: "linear-gradient(135deg, #E91E8C, #C2185B)" }}
+                          >
+                            V
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div
-                      className="rounded-2xl rounded-tl-md px-4 py-2.5"
-                      style={{ background: "#f5f5f7", border: "1px solid #e5e5ea" }}
-                    >
-                      <p className="font-serif text-[14.5px] italic leading-snug" style={{ color: "#3a3530" }}>{n.text}</p>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
