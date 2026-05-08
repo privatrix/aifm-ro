@@ -42,6 +42,19 @@ export default function App() {
   const [listenerCount, setListenerCount] = useState<number | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // On-screen debug overlay — visible only with ?debug=1 in the URL.
+  // Useful for diagnosing mobile-only audio bugs without DevTools.
+  const [debugLines, setDebugLines] = useState<string[]>([]);
+  const debugEnabled = typeof window !== "undefined"
+    && window.location.search.includes("debug=1");
+  const dlog = useCallback((msg: string) => {
+    if (!debugEnabled) return;
+    setDebugLines(prev => {
+      const stamped = `${new Date().toISOString().slice(11, 23)} ${msg}`;
+      const next = [...prev, stamped];
+      return next.length > 30 ? next.slice(-30) : next;
+    });
+  }, [debugEnabled]);
 
   // 1. Pull catalog
   useEffect(() => {
@@ -148,6 +161,7 @@ export default function App() {
     playing,
     urls: liveUrls,
     onPlayFail: () => setPlaying(false),
+    onDebug: dlog,
   });
 
   // Solo-mode source assignment. Live mode is handled by useLiveAudio above.
@@ -286,6 +300,11 @@ export default function App() {
 
   return (
     <div className="app-shell flex flex-col">
+      {debugEnabled && (
+        <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:9999,maxHeight:"40vh",overflow:"auto",background:"rgba(0,0,0,0.85)",color:"#0f0",fontFamily:"monospace",fontSize:10,padding:6,lineHeight:1.3}}>
+          {debugLines.map((l,i) => <div key={i}>{l}</div>)}
+        </div>
+      )}
       {/*
         Audio element. The mapping from element state -> UI state is honest:
           - onPlay  : the element actually started playing -> reflect playing
@@ -302,11 +321,19 @@ export default function App() {
       <audio
         ref={audioRef}
         onEnded={handleAudioEnded}
-        onPlay={() => setPlaying(true)}
+        onPlay={() => { dlog("el onPlay"); setPlaying(true); }}
         onPause={(e) => {
           const a = e.currentTarget as HTMLAudioElement;
+          dlog(`el onPause ct=${a.currentTime.toFixed(2)} played=${a.played?.length ?? 0}`);
           if (a.currentTime > 0 || a.played?.length) setPlaying(false);
         }}
+        onPlaying={(e) => dlog(`el playing ct=${(e.currentTarget as HTMLAudioElement).currentTime.toFixed(2)}`)}
+        onCanPlay={(e) => dlog(`el canplay rs=${(e.currentTarget as HTMLAudioElement).readyState}`)}
+        onError={(e) => {
+          const err = (e.currentTarget as HTMLAudioElement).error;
+          dlog(`el error code=${err?.code} msg=${err?.message ?? ""}`);
+        }}
+        onStalled={() => dlog("el stalled")}
         preload="auto"
         playsInline
         crossOrigin="anonymous"

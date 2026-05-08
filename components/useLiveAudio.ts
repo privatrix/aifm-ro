@@ -72,8 +72,10 @@ export function useLiveAudio(opts: {
   playing: boolean;        // user's intent
   urls: LiveStreamUrls;
   onPlayFail?: (err: unknown) => void;
+  onDebug?: (line: string) => void;
 }) {
-  const { audioRef, enabled, playing, urls, onPlayFail } = opts;
+  const { audioRef, enabled, playing, urls, onPlayFail, onDebug } = opts;
+  const dbg = (s: string) => { try { onDebug?.(s); } catch {} };
   const liveSeekCleanup = useRef<(() => void) | null>(null);
 
   // 1. Source assignment.
@@ -96,6 +98,9 @@ export function useLiveAudio(opts: {
     if (a.src !== url) {
       a.src = url;
       a.load();
+      dbg(`src=${url.slice(-30)} kind=${kind}`);
+    } else {
+      dbg(`src unchanged kind=${kind}`);
     }
 
     if (kind === "hls") {
@@ -144,18 +149,22 @@ export function useLiveAudio(opts: {
 
     a.muted = false;
     if (playing) {
+      dbg(`play() rs=${a.readyState} ns=${a.networkState} src=${a.src?.slice(-30) ?? "(none)"}`);
       const p = a.play();
       if (p && typeof p.catch === "function") {
         p.catch((err: unknown) => {
-          // Real autoplay block (NotAllowedError) is the only case we surface
-          // back to the UI; everything else is a transient that the audio
-          // element will recover from on its own.
           const name = (err as { name?: string })?.name;
+          const msg  = (err as { message?: string })?.message;
+          dbg(`play() REJECTED ${name}: ${msg ?? ""}`);
           if (name === "NotAllowedError") onPlayFail?.(err);
           else console.warn("[useLiveAudio] play() rejected:", err);
         });
+        if (typeof p.then === "function") {
+          p.then(() => dbg(`play() RESOLVED`));
+        }
       }
     } else {
+      dbg(`pause()`);
       a.pause();
     }
   // playing is the only intent driver here. We intentionally do NOT depend
