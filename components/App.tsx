@@ -41,6 +41,19 @@ export default function App() {
   const [listenerCount, setListenerCount] = useState<number | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // On-screen debug log (visible when ?debug=1 is in the URL). Helps catch
+  // mobile-only audio bugs where DevTools isn't accessible.
+  const [debugLines, setDebugLines] = useState<string[]>([]);
+  const debugEnabled = typeof window !== "undefined"
+    && window.location.search.includes("debug=1");
+  const dlog = useCallback((msg: string) => {
+    if (!debugEnabled) return;
+    setDebugLines(prev => {
+      const stamped = `${new Date().toISOString().slice(11, 23)} ${msg}`;
+      const next = [...prev, stamped];
+      return next.length > 30 ? next.slice(-30) : next;
+    });
+  }, [debugEnabled]);
 
   // 1. Pull catalog
   useEffect(() => {
@@ -329,10 +342,12 @@ export default function App() {
 
     a.muted = false;
     if (playing) {
+      dlog(`play() called src=${a.src ? a.src.slice(-30) : "(none)"} rs=${a.readyState} ns=${a.networkState}`);
       const p = a.play();
       if (p && typeof p.catch === "function") {
         p.catch((err) => {
           console.warn("[audio] play() rejected:", err?.name, err?.message);
+          dlog(`play() REJECTED ${err?.name}: ${err?.message ?? ""}`);
           // Only flip the UI to paused if the rejection was due to lack of
           // user gesture (NotAllowedError). For NotSupportedError or aborts,
           // keep "playing" intent set so hls.js / MP3 fallback can take over
@@ -341,6 +356,9 @@ export default function App() {
             setPlaying(false);
           }
         });
+        if (typeof p.then === "function") {
+          p.then(() => dlog(`play() RESOLVED`));
+        }
       }
       // Log audio element errors but DO NOT auto-pause the UI. hls.js performs
       // its own recovery (and we have an MP3 fallback wired into its error
@@ -350,8 +368,13 @@ export default function App() {
       const onError = () => {
         const e = a.error;
         console.warn("[audio] element error:", e?.code, e?.message);
+        dlog(`element error code=${e?.code} msg=${e?.message ?? ""}`);
       };
       a.addEventListener("error", onError, { once: true });
+      const onCanPlay = () => dlog(`canplay rs=${a.readyState}`);
+      a.addEventListener("canplay", onCanPlay, { once: true });
+      const onPlaying = () => dlog(`playing event ct=${a.currentTime.toFixed(2)}`);
+      a.addEventListener("playing", onPlaying, { once: true });
       const onStalled = () => console.warn("[audio] stalled (network slowed)");
       a.addEventListener("stalled", onStalled, { once: true });
     } else {
@@ -491,6 +514,11 @@ export default function App() {
 
   return (
     <div className="app-shell flex flex-col">
+      {debugEnabled && (
+        <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:9999,maxHeight:"40vh",overflow:"auto",background:"rgba(0,0,0,0.85)",color:"#0f0",fontFamily:"monospace",fontSize:10,padding:6,lineHeight:1.3}}>
+          {debugLines.map((l,i) => <div key={i}>{l}</div>)}
+        </div>
+      )}
       <audio
         ref={audioRef}
         onEnded={handleAudioEnded}
